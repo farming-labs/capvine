@@ -1,0 +1,52 @@
+{
+  "name": "@farming-labs/capvine",
+  "version": "0.0.0",
+  "description": "Delegated, resource-bound permissions for agent tools.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "example": "tsx examples/delegation.ts",
+    "check": "npm run format:check && npm run typecheck && npm test && npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./sqlite": {
+      "types": "./dist/sqlite.d.ts",
+      "default": "./dist/sqlite.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/farming-labs/capvine.git"
+  },
+  "dependencies": {
+    "@ucanto/client": "9.0.2",
+    "@ucanto/core": "10.4.5",
+    "@ucanto/principal": "9.0.3",
+    "@ucanto/validator": "10.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "prettier": "3.6.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}
