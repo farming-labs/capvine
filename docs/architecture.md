@@ -21,7 +21,9 @@ flowchart TB
   Connector --> Provider[External service]
 ```
 
-An LLM does not sign requests itself. The runtime or a scoped sidecar holds each worker's key. The authority signing key, state store, policy code, connector credentials, and operation implementations stay outside the worker's control. Neither an in-process example nor separate processes under one OS user provide a sandbox for hostile code. See the [network example](../examples/network/README.md) for real HTTP dispatch and the [integration guide](integration.md) for runtime wiring.
+A client application, worker runtime, or scoped sidecar holds the recipient's signing key. In an agent integration, model output requests an operation; trusted runtime code signs the invocation. The authority signing key, state store, policy code, connector credentials, and operation implementations stay outside the client's control. Neither an in-process example nor separate processes under one OS user provide a sandbox for hostile code. See the [network example](../examples/network/README.md) for real HTTP dispatch and the [integration guide](integration.md) for application wiring.
+
+The `task` field is a lifecycle context, not an agent-specific requirement. Applications can use it for jobs or workflows while preserving the current profile's exact restrictions. Roles or ACLs may inform the issuance policy; Capvine verifies the resulting grant before resource dispatch. Database-native authorization and provider authentication remain separate integration concerns.
 
 ## Capability profile
 
@@ -58,14 +60,14 @@ The current recipient signs a child grant containing its parent as proof. The SD
 
 Delegation is local to the worker and does not require another owner interaction. Child grants need not be pre-registered in the database. Their proofs travel with the invocation. The store records root grants; it does not claim to enumerate every child grant created offline.
 
-The agent runtime remains responsible for spawning workers and handing the correct grant to the correct identity. An MCP adapter will need authenticated worker/task bindings. Multiple workers using the same MCP identity cannot be reliably distinguished from model-supplied names alone.
+The application remains responsible for provisioning clients and handing each grant to the correct identity. An optional MCP adapter will need authenticated worker/task bindings. Multiple workers using the same MCP identity cannot be reliably distinguished from model-supplied names alone.
 
 ## Invocation
 
 1. The client signs an invocation to the service, embedding its grant chain and a short invocation lifetime.
 2. The transport sends an archive of bytes. The authority decodes it; `decodeGrant` alone does not authenticate a grant.
 3. Preflight rejects unsupported profiles, missing proofs, expiry expansion, a wrong receiving service, and unknown root grants.
-4. ucanto checks signatures, proof-recipient alignment, temporal validity, and our capability derivation rules. Only the configured service can originate accepted root authority.
+4. ucanto checks signatures, proof-recipient alignment, temporal validity, and the capability profile's derivation rules. Only the configured service can originate accepted root authority.
 5. The authorization callback checks revocations on the validated path. The dispatcher checks current task state, resource ownership, operation kind, and revocations again before dispatch.
 6. The dispatcher writes an authorization audit event and calls the registered handler with the resource binding from server storage.
 

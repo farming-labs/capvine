@@ -1,10 +1,10 @@
 # Security model
 
-Capvine is an experimental prototype. It has not been independently audited and is not ready to guard bank transfers or other irreversible actions.
+Capvine is an experimental prototype for repeatable reads. It has not been independently audited and is not ready to authorize irreversible operations.
 
 ## Intended boundary
 
-The adversary may control a worker, ignore the SDK, sign arbitrary requests with that worker's own key, modify a requested resource or operation, and attempt to reuse a proof. The protected authority must reject requests outside the worker's valid delegation chain before calling the registered handler.
+The adversary may control a client, ignore the SDK, sign arbitrary requests with that client's own key, modify a requested resource or operation, and attempt to reuse a proof. The protected authority must reject requests outside the client's valid delegation chain before calling the registered handler.
 
 The authority process, its signing key, state store, owner authorization callback, operation implementations, and provider connectors are trusted. Workers must not be able to modify those components, read another worker's keys, or directly use broad provider credentials.
 
@@ -14,7 +14,7 @@ The repository tests explicit negative cases: changed resources, operations, tas
 
 - Authenticate the owner before calling `issue`; the `actor` string is not authentication.
 - Keep registration, grant issuance, task administration, and revocation operations on a separately authorized application surface.
-- Store provider credentials and private keys outside agent-accessible files, tools, browsers, logs, and prompts.
+- Store authority keys and provider credentials outside client-accessible files, tools, browsers, logs, and prompts. Each client may hold its own signing key; it must not obtain another client's key.
 - Preserve the service identity and state store together across restarts.
 - Bind each handler's actual target to the verified server resource. Do not authorize one target and then execute an unchecked argument.
 - Apply TLS, network admission controls, rate limits, execution deadlines, and monitoring in the hosting application. The Node HTTP adapter bounds requests/results and admitted concurrency; it is not a complete internet-facing deployment.
@@ -32,7 +32,7 @@ The repository tests explicit negative cases: changed resources, operations, tas
 - Revocation stops subsequent authorization. It does not cancel in-flight operations or erase returned data.
 - A permitted read can still disclose sensitive information to its recipient. Capvine does not enforce information-flow restrictions on returned data.
 - A valid capability does not make model output correct, remove prompt injection, or protect an unrestricted browser, shell, operating system, or network path.
-- Shared agent identities do not provide per-agent isolation. The runtime must keep worker keys and task bindings separate.
+- Shared client identities do not provide per-client isolation. The application must keep client keys and task bindings separate.
 - Offline child delegations are not exhaustively indexed. Root grants and authorization outcomes are persisted; a comprehensive grant explorer is future work.
 - SQLite storage and audit logs are trusted local state, not encrypted or tamper-evident storage.
 

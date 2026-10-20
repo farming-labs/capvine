@@ -1,7 +1,7 @@
 {
   "name": "@farming-labs/capvine",
   "version": "0.0.0",
-  "description": "Delegated, resource-bound permissions for agent tools.",
+  "description": "Delegated, resource-bound authorization for applications and services.",
   "type": "module",
   "private": true,
   "license": "MIT",

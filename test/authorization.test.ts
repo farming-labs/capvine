@@ -24,13 +24,13 @@ async function fixture(store: StateStore = new MemoryStore()) {
   for (const id of ["issue42", "issue43"]) {
     store.addResource({
       id: `urn:capvine:resource:${id}`,
-      ownerId: "simon",
+      ownerId: "demo-owner",
       kind: "github.issue",
       target: { issue: id },
     });
   }
   for (const id of ["task1", "task2"])
-    store.addTask({ id, ownerId: "simon", active: true });
+    store.addTask({ id, ownerId: "demo-owner", active: true });
   const authority = createAuthority({
     signer: service,
     store,
@@ -48,7 +48,7 @@ async function fixture(store: StateStore = new MemoryStore()) {
     });
   }
   const parent = await authority.issue({
-    actor: "simon",
+    actor: "demo-owner",
     audience: a,
     taskId: "task1",
     resource: "urn:capvine:resource:issue42",

@@ -1,8 +1,8 @@
 # Capvine
 
-**Delegated, resource-bound permissions for agent tools.**
+**Delegated, resource-bound authorization for applications and services.**
 
-Capvine is an experimental TypeScript library from [Farming Labs](https://github.com/farming-labs). Give a worker permission to perform one operation on one resource, let it delegate that permission with a shorter lifetime, and verify every invocation before calling your existing connector.
+Capvine is an experimental TypeScript library from [Farming Labs](https://github.com/farming-labs). Grant a client permission to perform one operation on one resource, allow delegation with a shorter lifetime, and verify every invocation before dispatching to an application handler. Clients can be backend services, background workers, applications, or agent runtimes.
 
 ```text
 Owner policy → grant for A → narrower grant for B
@@ -11,10 +11,10 @@ Owner policy → grant for A → narrower grant for B
                                          ↓
                      Capvine verification + lifecycle checks
                                          ↓
-                            your existing tool handler
+                           application resource handler
 ```
 
-Capvine builds on [ucanto](https://github.com/storacha/ucanto). It does not implement its own cryptography, replace your agent runtime, or authenticate directly to GitHub, Gmail, or Slack.
+Capvine builds on [ucanto](https://github.com/storacha/ucanto). Applications supply owner authentication, issuance policy, resource handlers, and upstream credentials. Existing roles or ACLs can inform issuance policy. The library does not replace database permissions or provide native database authorization; the current examples use simulated issue APIs.
 
 ## Status
 
@@ -105,7 +105,7 @@ const result = await b.invoke(child);
 
 `transport` sends serialized invocation bytes to `authority.execute` in your backend. Use `createHttpTransport` and `createHttpHandler` from the `./http` entry to cross a process boundary, as in the network example. Separate processes under the same OS user are not an isolation boundary for arbitrary untrusted code; deployment must restrict access to authority state, keys, and alternate credential paths.
 
-The [integration guide](docs/integration.md) maps this to an existing harness, tool callback, child-agent lifecycle, and Simon's Mac mini architecture. The runtime integration sketches are proposed wiring points, not shipped plugins.
+The [integration guide](docs/integration.md) describes resource registration, grant issuance, service integration, and worker delegation. It separates the implemented HTTP boundary from proposed database and runtime adapters.
 
 ## Persist state
 
@@ -118,13 +118,13 @@ store.revoke(parent.cid.toString());
 store.endTask("summarize-42");
 ```
 
-Authenticate and authorize the human calling any endpoint you put around those methods. The same requirement applies to resource registration and grant issuance. A string called `actor` is not authentication.
+Authenticate and authorize the caller of any endpoint exposing those methods. The same requirement applies to resource registration and grant issuance. A string called `actor` is not authentication.
 
 ## Scope
 
 The prototype supports exact, repeatable reads without caller-controlled operation arguments. Passing a grant to another worker requires that worker's own identity key to invoke it. Workers sharing keys or a broad alternative credential do not gain isolation from this library.
 
-Revocation affects subsequent authorization decisions; it does not cancel an action already dispatched. Read results can still be disclosed by an agent. The SDK does not sandbox the operating system, prevent all prompt injection, or make an allowed action inherently desirable.
+Revocation affects subsequent authorization decisions; it does not cancel an action already dispatched. A recipient can still disclose returned data. The SDK does not sandbox the operating system or guarantee that a permitted operation is appropriate for the application's purpose.
 
 Read the [architecture](docs/architecture.md), [security model](SECURITY.md), and [roadmap](docs/roadmap.md) before integrating it.
 

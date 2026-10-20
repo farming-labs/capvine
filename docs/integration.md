@@ -1,36 +1,36 @@
-# Adding Capvine to an existing agent project
+# Integrating Capvine into applications and services
 
-Capvine belongs between a tool call and the code that uses the provider credential. Your existing runtime still runs the model, schedules work, and spawns agents. Your connector still speaks GitHub, Gmail, or Slack. Capvine checks whether this worker may invoke this operation on this registered resource for this task.
+Capvine sits between a client request and a protected resource handler. The application schedules work and manages identities; the handler connects to the underlying service or datastore. Capvine verifies whether the caller may invoke the requested operation on the registered resource within an active authorization context.
 
-The first target user is a developer who controls the application's tool handlers and backend. Adding a package cannot restrict an unrelated application that still has unrestricted credentials or a logged-in browser.
+The current API calls that context a `task`: a lifecycle record that can represent a job, workflow, or bounded unit of work. It does not require an LLM or agent runtime. Clients must still follow the prototype's exact resource/action/task/service profile.
+
+Integration requires control over the resource handler and access paths. An application with separate unrestricted credentials can bypass a capability-aware API.
 
 ## A complete task
 
-Suppose the owner selects issues 42, 43, and 44 and starts “summarize these issues.”
+The network example creates a job to read issues 42, 43, and 44 using a coordinator and three workers.
 
 | Step | Who acts                                 | What happens                                                                                             |
 | ---- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | 1    | Authenticated owner + application policy | Resolve the selected issues into registered resources and create a task.                                 |
-| 2    | Runtime                                  | Create coordinator A's identity; keep its private key outside model text.                                |
+| 2    | Runtime                                  | Create coordinator A's identity and protect its private key.                                             |
 | 3    | Authority                                | Issue three exact read grants to A, one per issue.                                                       |
 | 4    | Runtime                                  | Spawn B, C, and D with distinct identities.                                                              |
 | 5    | A's delegation code                      | Delegate issue 42 to B, 43 to C, and 44 to D, shortening grant lifetimes.                                |
-| 6    | Each worker's tool bridge                | Sign a request with its identity and assigned grant.                                                     |
+| 6    | Each worker's client                     | Sign a request with its identity and assigned grant.                                                     |
 | 7    | Authority                                | Verify the chain, resource/action/task/service restrictions, expiry, and current revocations/task state. |
 | 8    | Protected handler                        | Read the bound issue through the existing connector.                                                     |
 | 9    | Runtime / owner policy                   | End the task or revoke a grant when access is no longer needed.                                          |
 
-Three workers are a demonstration choice. One worker needs one grant; a coordinator is optional. Spawning an agent does not create permission. A runtime can start a worker with no grants and attach one after policy allows it.
+Three workers are a demonstration choice. One worker needs one grant; a coordinator is optional. Starting a process does not create permission. A runtime can provision a worker with no grants and assign one after policy allows it.
 
-## How does it choose the reference?
+## Resource selection and issuance policy
 
-The model can propose “read issue 42.” That proposal is input, not proof of permission. The application resolves the resource within an authorized connection and applies its owner policy. The authority then signs a grant for a particular worker identity.
+The client requests access to a resource. The application resolves that resource within an authorized connection and applies its issuance policy, which can consult existing roles or ACLs. The authority signs a grant for the selected recipient only if that policy permits it. A client-provided resource name or claimed role is not proof of authorization.
 
-Here, the owner's selected issues determine the allowed resources before workers start. A standing policy can automate issuance for an allowed set, with the same server checks. Requests outside that set need a new policy decision or owner approval. A classification model can suggest a selection; declaring its own choice safe does not establish owner authority.
+In the example, trusted setup selects allowed issues before workers start. A standing policy can automate issuance for an allowed set. Requests outside that set require a new authorized decision. An agent or classification model may propose a selection; application policy must still authorize it.
 
-Each read and each delegation within an existing grant does **not** need another human click. The verifier checks automatically. New authority requires a new authorized grant.
-
-Using the room metaphor: the owner approves three room keys, the coordinator passes a particular key to each helper, and the lock checks that key on every use. Changing a label on the key cannot change which room it opens.
+Reads and delegation within an existing grant do not require repeated human approval. The verifier checks each invocation automatically. Additional authority requires a new authorized grant. Resource discovery and an authenticated grant-request API are application responsibilities; this prototype does not implement them.
 
 ## The code boundary
 
@@ -68,7 +68,7 @@ const client = createClient({
 const readAssignedIssue = () => client.invoke(assignedGrant);
 ```
 
-Register `readAssignedIssue` as a tool using the existing framework. The callback closes over the worker's grant. The model supplies neither an account token nor an arbitrary issue ID. For several permitted resources, trusted code can select from a map of that worker's actual grants; missing entries fail instead of falling back to a master credential.
+Use `readAssignedIssue` in a job handler, service workflow, or agent tool registration. The callback closes over the worker's grant and accepts no target override. For several permitted resources, select from a map of that worker's actual grants; missing entries must fail instead of falling back to a broader credential.
 
 When A spawns a child, bind the returned child identity to a delegated grant:
 
@@ -82,46 +82,48 @@ const childGrant = await coordinatorClient.delegate({
 
 The parent must have at least that remaining lifetime. The child invokes using its own signer. Send grants with `encodeGrant` / `decodeGrant`; decoding is not authorization. The authority verifies at invocation time.
 
-## Where it fits in Simon's Mac mini setup
+## Deployment boundary
 
 ```mermaid
 flowchart TB
   Owner[Owner selection or standing policy] --> Admin[Protected grant administration]
-  subgraph Agent[Agent execution environment]
-    Harness[Existing harness / coordinator] --> Bridge[Per-worker tool bridge]
-    Harness --> Children[Child agents]
-    Children --> Bridge
+  subgraph Clients[Application execution environment]
+    Coordinator[Service / coordinator] --> Client[Per-worker client]
+    Coordinator --> Workers[Workers]
+    Workers --> Client
   end
   Admin --> Authority[Capvine authority + lifecycle store]
-  Bridge -->|Signed invocation over HTTP| Authority
-  Authority --> Connector[Existing MCP / provider connector]
-  Connector --> Services[GitHub / Gmail / Slack]
+  Client -->|Signed invocation over HTTP| Authority
+  Authority --> Handler[Registered resource handler]
+  Handler --> Resource[External API / application datastore]
   Authority --- Secrets[Protected identities and provider credentials]
 ```
 
-This adds tool authorization alongside his harness and gateway. An existing MCP connector can sit behind a registered handler if the handler pins the verified target and does not expose an unrestricted connector call to the agent. A reusable MCP adapter is a roadmap item, not implemented here.
+The authority verifies the grant and loads the immutable resource binding before calling the handler. The handler selects credentials and executes against the bound target. The client receives the operation result, not an upstream credential. The example demonstrates this with one simulated provider connection; multi-account credential management remains an application integration.
 
-Docker still restricts code execution separately. The agent must not mount authority state or credentials, control its process/container, or have a second unrestricted service path. A browser logged into the owner's bank account remains another source of authority; this HTTP adapter cannot constrain its clicks. Residential routing changes where traffic originates, not what is authorized.
+OS and network isolation are separate deployment responsibilities. Clients must not be able to modify authority state, control its process, read protected credentials, or bypass verification through another privileged connection. The example's separate processes run under the same OS user and do not establish hostile-code containment.
 
-## Other Farming Labs integration points
+## Resource and runtime adapters
 
-These are proposed wiring points, not shipped or tested integrations:
+The following are integration patterns, not shipped or tested adapters:
 
-- **[agent-unit](https://github.com/farming-labs/agent-unit):** keep its runtime adapters, run persistence, and pause/resume. Bind grants in application tool implementations. Every new external dispatch after retry or resume must verify again; a saved workflow must not restore an old authorization decision as current authority.
-- **[modebox](https://github.com/farming-labs/modebox):** its `hostFunctions` seam can expose `issues.readAssigned: () => client.invoke(assignedGrant)`. Keep the signer and client in trusted host code; guest code gets only the narrow callback. Any new external request after resume must re-enter verification. Returning an already saved read result is different; revocation cannot erase data already returned.
+- **Database-backed operations:** register a defined operation such as reading one invoice. After verification, the handler queries the bound record using a restricted database connection. Database roles and row permissions can provide additional enforcement. This does not authorize arbitrary SQL or make the database understand capability proofs.
+- **Background jobs and service workflows:** provision separate client identities and bind grants to the job context. New external calls after retry or resume must verify again; saved workflow state must not turn an old authorization decision into current authority.
+- **Sandbox host functions:** keep the signer and client in trusted host code and expose only a callback bound to the assigned grant. A guest must not receive an unrestricted resource handler or provider credential.
+- **Agent tools and MCP:** register a scoped callback or connector operation and authenticate worker/task sessions. Model-supplied names are not identity. A reusable MCP adapter remains planned.
 
-In both cases, approval may establish a grant or approve a future exact action. Approval does not replace server enforcement or deployment isolation.
+Reusing a saved read result is different from making a new request; revocation cannot erase data already returned. Approval does not replace server enforcement or deployment isolation.
 
 ## What scales now?
 
 | Dimension                   | Current behavior                                                                                      | Next engineering step                                                                                           |
 | --------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| More agents                 | Independent identities/grants; fan-out does not deepen each chain. Demo runs 1–8 workers.             | Measure realistic load and denial traffic before claiming capacity.                                             |
+| More clients                | Independent identities/grants; fan-out does not deepen each chain. Demo runs 1–8 workers.             | Measure realistic load and denial traffic before claiming capacity.                                             |
 | Deeper delegation           | One parent per link; at most eight nodes including the invocation.                                    | Review and benchmark a broader proof profile if needed.                                                         |
 | More services               | Register operations and immutable resources around existing connectors.                               | Provider-specific target validation and least-privilege credentials.                                            |
 | Persistence                 | SQLite stores roots, resources, tasks, revocations, audit. Keys live elsewhere.                       | Migrations, backups, key lifecycle, retention, administration.                                                  |
 | HTTP                        | 64 KiB request archives, 1 MiB result payloads, 16 admitted requests per handler, `429` backpressure. | Hosted TLS, per-principal rate limits, execution deadlines, load testing, monitoring.                           |
 | Multiple authority replicas | Not supported as a coordinated deployment; the store API is synchronous/local.                        | Async durable store, shared lifecycle state with defined consistency, shared root trust, replica failure tests. |
-| Writes and money            | Outside this repeatable-read prototype.                                                               | Exact approved parameters, replay handling, atomic limits, provider idempotency.                                |
+| Write operations            | Outside this repeatable-read prototype.                                                               | Exact approved parameters, replay handling, atomic limits, provider idempotency.                                |
 
 The client does not retry automatically. A timeout does not prove a handler did not run. See the [roadmap](roadmap.md) for the implementation order.
