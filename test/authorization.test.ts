@@ -282,7 +282,10 @@ test("the resource binding cannot be replaced or mutated through a returned obje
 
 test("invalid and oversized archives never reach a handler", async () => {
   const f = await fixture();
-  await assert.rejects(f.authority.execute(new Uint8Array([1, 2, 3])));
+  await assert.rejects(
+    f.authority.execute(new Uint8Array([1, 2, 3])),
+    PermissionDenied,
+  );
   await assert.rejects(
     f.authority.execute(new Uint8Array(65_537)),
     PermissionDenied,

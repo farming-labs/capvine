@@ -21,7 +21,7 @@ flowchart TB
   Connector --> Provider[External service]
 ```
 
-An LLM does not sign requests itself. The runtime or a scoped sidecar holds each worker's key. The authority signing key, state store, policy code, connector credentials, and operation implementations stay outside the worker's control. A single process demonstrating all roles is convenient for development but is not a sandbox.
+An LLM does not sign requests itself. The runtime or a scoped sidecar holds each worker's key. The authority signing key, state store, policy code, connector credentials, and operation implementations stay outside the worker's control. Neither an in-process example nor separate processes under one OS user provide a sandbox for hostile code. See the [network example](../examples/network/README.md) for real HTTP dispatch and the [integration guide](integration.md) for runtime wiring.
 
 ## Capability profile
 
@@ -80,6 +80,16 @@ The SQLite store uses an append-only resource/root-grant registry, task records 
 Revoking any known grant CID invalidates invocations whose chain depends on that grant. Revoking a parent does not require discovering all its descendants. Another independent grant remains independently usable.
 
 Task termination disables all grants bound to that task. Neither operation can undo work already dispatched. Restore state and the same authority identity together after a restart. A fresh empty store will reject old root grants.
+
+## HTTP transport
+
+The Node `./http` entry exports `createHttpHandler`, `createHttpTransport`, and `HttpTransportError`. Mount the handler on a protected service; it accepts only `POST /invoke` with `application/vnd.ipld.car`. It serves no issuance, registration, revocation, or other administration routes. Pass `authority.execute` as its executor.
+
+Requests are bounded to 64 KiB and tool result payloads to 1 MiB. The handler limits admitted concurrency to 16 and returns `429` when full. It rejects browser Origin headers, bounds body-read time, and returns generic errors instead of internal exception details. An authorization failure maps to `403` and then `PermissionDenied` on the client.
+
+The client requires HTTPS except on loopback, refuses redirects, bounds response reading, and has a default ten-second request timeout. It does not retry. A timeout is not proof that the handler did not run. TLS termination, host/network isolation, per-principal rate limits, execution cancellation/deadlines, and owner authentication remain deployment responsibilities.
+
+The demo keeps its control channel private to the supervisor and authority through parent-process IPC. Its authority identity and SQLite database are temporary. A persistent service needs durable identity/state and a separately authenticated administration surface. The synchronous SQLite adapter is a single-server design, not coordinated multi-replica state.
 
 ## Existing components and Capvine code
 

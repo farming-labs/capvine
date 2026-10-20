@@ -27,9 +27,10 @@ Implemented:
 - Expiration, parent/child revocation, and task termination.
 - Memory and SQLite state stores, with audit outcomes.
 - Serialized proof archives and a transport callback for embedding in a backend.
-- An offline issue-reading example and tests that bypass the client to attack server enforcement.
+- A bounded Node HTTP handler and client transport.
+- In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: an HTTP service, MCP adapter, live GitHub connector, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. The GitHub example uses fixture data.
+Not implemented: a production service deployment, authenticated owner administration API, MCP adapter, live GitHub connector, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. Provider data in both examples is simulated.
 
 ## Run the example
 
@@ -41,9 +42,12 @@ cd capvine
 npm ci
 npm run check
 npm run example
+npm run example:network -- --workers 3
 ```
 
-The example creates a permission for Agent A, delegates it to Agent B, reads one fixture issue, revokes A's grant, and demonstrates that B's next call fails. No external account or model API key is needed.
+The first example creates a permission for A, delegates it to B, reads one fixture issue, and demonstrates that revoking A's grant stops B's next call. No external account or model API key is needed.
+
+The [network example](examples/network/README.md) runs an authority, coordinator, and three workers in separate processes. Each worker reads only its assigned issue over HTTP. Changing the issue, action, or task fails. Revoking one root leaves independent grants working; ending the task disables all of them. Try `--workers 8` to increase fan-out. This is a correctness demonstration, not a capacity benchmark or OS sandbox.
 
 ## The developer integration
 
@@ -99,7 +103,9 @@ const b = createClient({
 const result = await b.invoke(child);
 ```
 
-`transport` sends serialized invocation bytes to `authority.execute` in your backend. The demo calls it in process to show the flow; that arrangement does not isolate arbitrary agent code from server secrets. Deploy them separately when the worker runs untrusted code.
+`transport` sends serialized invocation bytes to `authority.execute` in your backend. Use `createHttpTransport` and `createHttpHandler` from the `./http` entry to cross a process boundary, as in the network example. Separate processes under the same OS user are not an isolation boundary for arbitrary untrusted code; deployment must restrict access to authority state, keys, and alternate credential paths.
+
+The [integration guide](docs/integration.md) maps this to an existing harness, tool callback, child-agent lifecycle, and Simon's Mac mini architecture. The runtime integration sketches are proposed wiring points, not shipped plugins.
 
 ## Persist state
 
