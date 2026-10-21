@@ -2,7 +2,7 @@
 
 Capvine is an OSS authorization library for developers who control application resource handlers and access paths. The core supports delegated permissions for services, workers, and applications; agent tools are one integration. Resource adapters connect verified requests to external APIs or application datastores. A managed service can operate the same enforcement engine later.
 
-This is an implementation sequence, not a delivery-date commitment. The configurable resource server, filesystem/PostgreSQL adapters, and runtime integrations described below are planned features. The next milestone is tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3).
+This is an implementation sequence, not a delivery-date commitment. Persistent service composition, the filesystem adapter, GitHub reads, and a provisioned MCP bridge are implemented. The configuration-file application and PostgreSQL adapter remain in progress. The next milestone is tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3).
 
 ## 0. Runnable proof of the boundary — implemented
 
@@ -35,6 +35,8 @@ These prerequisites remain visible independently of the adapter work:
 - [ ] npm trusted publishing and release automation.
 
 The first two items provide a local service foundation, not production readiness. Built-in resource adapters and a configuration-file application are still pending. External review and publication gates cannot be satisfied by internal test results.
+
+**Delivered so far:** the adapter lifecycle contract, protected server composition, and [registered-file reader](resources.md), verified by `test/filesystem.test.ts`. PostgreSQL and the combined configuration-file example remain unfinished.
 
 Build one server that reads a registered text file and a registered PostgreSQL record through the same `client.invoke(grant)` flow. Reuse the authority, capability profile, resource registry, HTTP transport, and lifecycle checks. No agent runtime is required. Keep `task` as the existing authorization context for a job or workflow.
 
