@@ -105,13 +105,13 @@ OS and network isolation are separate deployment responsibilities. Clients must 
 
 ## Resource and runtime adapters
 
-The following are integration patterns, not shipped or tested adapters. The next milestone combines filesystem and PostgreSQL resource adapters in one configurable server, reusing the existing authority and HTTP transport. Its layers and acceptance criteria are tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3) and the [roadmap](roadmap.md#1-resource-server-with-filesystem-and-postgresql-adapters).
+Filesystem and database adapters below remain planned; the [GitHub connector and per-worker MCP bridge](connectors.md) are implemented. The next milestone combines filesystem and PostgreSQL resource adapters in one configurable server, reusing the existing authority and HTTP transport. Its layers and acceptance criteria are tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3) and the [roadmap](roadmap.md#1-resource-server-with-filesystem-and-postgresql-adapters).
 
 - **Filesystem operations:** register a bounded read of one regular text file. The adapter owns safe target resolution, file-identity semantics, and limits while reading. The initial scope does not accept caller-selected paths or directory-wide authority. Tests must address path/link escapes and replacement races within the supported deployment model.
 - **Database-backed operations:** register a defined operation such as reading one invoice. After verification, the handler queries the bound record using a restricted database connection. Database roles and row permissions can provide additional enforcement. This does not authorize arbitrary SQL or make the database understand capability proofs.
 - **Background jobs and service workflows:** provision separate client identities and bind grants to the job context. New external calls after retry or resume must verify again; saved workflow state must not turn an old authorization decision into current authority.
 - **Sandbox host functions:** keep the signer and client in trusted host code and expose only a callback bound to the assigned grant. A guest must not receive an unrestricted resource handler or provider credential.
-- **Agent tools and MCP:** register a scoped callback or connector operation and authenticate worker/task sessions. Model-supplied names are not identity. A reusable MCP adapter remains planned.
+- **Agent tools and MCP:** register a scoped callback or connector operation and authenticate worker/task sessions. Model-supplied names are not identity. The shipped bridge supports a separately provisioned signer/task/grant set per instance; public HTTP session authentication is not included.
 
 Reusing a saved read result is different from making a new request; revocation cannot erase data already returned. Approval does not replace server enforcement or deployment isolation.
 

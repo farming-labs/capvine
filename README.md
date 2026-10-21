@@ -14,7 +14,7 @@ Owner policy → grant for A → narrower grant for B
                            application resource handler
 ```
 
-Capvine builds on [ucanto](https://github.com/storacha/ucanto). Applications supply owner authentication, issuance policy, resource handlers, and upstream credentials. Existing roles or ACLs can inform issuance policy. The library does not replace database permissions or provide native database authorization; the current examples use simulated issue APIs.
+Capvine builds on [ucanto](https://github.com/storacha/ucanto). Applications supply owner authentication, issuance policy, resource handlers, and upstream credentials. Existing roles or ACLs can inform issuance policy. The library does not replace database permissions or provide native database authorization; examples include simulated APIs and an optional live public GitHub read.
 
 ## Status
 
@@ -28,10 +28,11 @@ Implemented:
 - Memory and SQLite state stores, with audit outcomes.
 - Serialized proof archives and a transport callback for embedding in a backend.
 - A bounded Node HTTP handler and client transport.
+- A live read-only GitHub issue connector and a provisioned per-worker MCP bridge.
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: a configuration-file resource-server application, filesystem/PostgreSQL resource adapters, a production service deployment, MCP adapter, live GitHub connector, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. Provider data in the examples is simulated.
+Not implemented: a configuration-file resource-server application, filesystem/PostgreSQL resource adapters, a production service deployment, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. The live GitHub example uses public data; private-account onboarding remains application-owned.
 
 The next milestone is one server serving a registered file and a registered PostgreSQL record through the existing grant-verification flow. See the [layered roadmap](docs/roadmap.md#1-resource-server-with-filesystem-and-postgresql-adapters) and [tracking issue #3](https://github.com/farming-labs/capvine/issues/3) for scope and acceptance criteria. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state.
 
@@ -110,6 +111,8 @@ const result = await b.invoke(child);
 `transport` sends serialized invocation bytes to `authority.execute` in your backend. Use `createHttpTransport` and `createHttpHandler` from the `./http` entry to cross a process boundary, as in the network example. Separate processes under the same OS user are not an isolation boundary for arbitrary untrusted code; deployment must restrict access to authority state, keys, and alternate credential paths.
 
 The [integration guide](docs/integration.md) describes resource registration, grant issuance, service integration, and worker delegation. It separates the implemented HTTP boundary from proposed database and runtime adapters.
+
+See the [GitHub and MCP guide](docs/connectors.md), `npm run example:github`, and `npm run example:mcp` for the implemented integrations.
 
 ## Persist state
 

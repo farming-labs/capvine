@@ -17,7 +17,9 @@
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "example:service": "tsx examples/service.ts"
+    "example:service": "tsx examples/service.ts",
+    "example:github": "tsx examples/github.ts",
+    "example:mcp": "tsx examples/mcp.ts"
   },
   "exports": {
     ".": {
@@ -43,6 +45,14 @@
     "./identity-file": {
       "types": "./dist/identity-file.d.ts",
       "default": "./dist/identity-file.js"
+    },
+    "./github": {
+      "types": "./dist/github.d.ts",
+      "default": "./dist/github.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "default": "./dist/mcp.js"
     }
   },
   "files": [
@@ -56,6 +66,7 @@
     "url": "https://github.com/farming-labs/capvine.git"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@ucanto/client": "9.0.2",
     "@ucanto/core": "10.4.5",
     "@ucanto/principal": "9.0.3",
