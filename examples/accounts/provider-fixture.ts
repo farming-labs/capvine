@@ -7,7 +7,9 @@ import {
 import { createServer, type ServerResponse } from "node:http";
 import { createOidcProvider } from "../../src/oauth.ts";
 
-export async function startProviderFixture() {
+export async function startProviderFixture(
+  options: { redirectUri?: string } = {},
+) {
   const keys = generateKeyPairSync("rsa", { modulusLength: 2048 });
   const jwk = {
     ...keys.publicKey.export({ format: "jwk" }),
@@ -16,7 +18,7 @@ export async function startProviderFixture() {
     use: "sig",
   };
   const clientSecret = randomBytes(32).toString("base64url");
-  const redirectUri = "http://127.0.0.1:8765/callback";
+  const redirectUri = options.redirectUri ?? "http://127.0.0.1:8765/callback";
   const scopes = ["openid", "https://www.googleapis.com/auth/gmail.readonly"];
   const codes = new Map<
     string,

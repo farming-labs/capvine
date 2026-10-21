@@ -23,7 +23,8 @@
     "server": "tsx src/cli.ts",
     "example:resources": "tsx examples/resources.ts",
     "package:check": "node scripts/check-package.mjs",
-    "example:accounts": "tsx examples/accounts/demo.ts"
+    "example:accounts": "tsx examples/accounts/demo.ts",
+    "console:accounts": "tsx examples/account-console.ts"
   },
   "exports": {
     ".": {
@@ -89,6 +90,10 @@
     "./gmail": {
       "types": "./dist/gmail.d.ts",
       "default": "./dist/gmail.js"
+    },
+    "./account-console": {
+      "types": "./dist/account-console.d.ts",
+      "default": "./dist/account-console.js"
     }
   },
   "files": [
