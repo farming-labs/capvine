@@ -1,0 +1,78 @@
+x-runtime: &runtime
+  image: ${COMPOSE_PROJECT_NAME}-fixture
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 64
+  mem_limit: 256m
+
+services:
+  initialize:
+    <<: *runtime
+    build:
+      context: ../..
+      dockerfile: examples/isolation/Dockerfile
+    user: "0:0"
+    cap_add: [CHOWN]
+    network_mode: none
+    command: [node, examples/isolation/provision.mjs]
+    volumes:
+      - authority:/authority
+      - provider:/provider
+      - worker:/worker
+      - socket:/socket
+  provider:
+    <<: *runtime
+    user: "10003:10000"
+    command: [node, examples/isolation/provider.mjs]
+    networks: [provider]
+    volumes: ["provider:/provider:ro"]
+    depends_on:
+      initialize: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:8080/').then(r=>process.exit(r.status===401?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+  authority:
+    <<: *runtime
+    user: "10001:10000"
+    command: [node, examples/isolation/authority.mjs]
+    networks: [provider]
+    volumes: ["authority:/authority:ro", "socket:/socket"]
+    depends_on:
+      provider: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "process.exit(require('node:fs').statSync('/socket/invoke.sock').isSocket()?0:1)",
+        ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+  worker:
+    <<: *runtime
+    user: "10002:10000"
+    network_mode: none
+    command: [node, examples/isolation/worker.mjs]
+    volumes: ["worker:/worker:ro", "socket:/socket:ro"]
+    depends_on:
+      authority: { condition: service_healthy }
+
+networks:
+  provider:
+    internal: true
+volumes:
+  authority:
+  provider:
+  worker:
+  socket:
