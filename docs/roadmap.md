@@ -29,8 +29,9 @@ These prerequisites remain visible independently of the adapter work:
 - [x] Transactional state schema versioning, service/owner binding, restart checks, and bounded audit inspection.
 - [x] Live read-only GitHub connector with actual provider target validation; `test/github.test.ts` and `npm run example:github`.
 - [x] MCP integration bound to a provisioned worker identity, task, and grants; `test/mcp.test.ts` and `npm run example:mcp`.
-- [ ] Deployment checks that establish credential and network isolation from untrusted workers.
-- [ ] API review with adopters and a supported release/version policy.
+- [x] Credential/network isolation checks for the [constrained container reference deployment](../examples/isolation/README.md), executed in Linux CI. Production-host and macOS desktop isolation remain separate work.
+- [x] Wire/version policy, package surface inspection, and fail-closed storage tests; see [release preparation](release-readiness.md).
+- [ ] External API review with adopters and approval of a supported release.
 - [ ] Independent security review and explicit publication approval.
 - [ ] npm trusted publishing and release automation.
 
