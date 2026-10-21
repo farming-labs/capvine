@@ -28,9 +28,10 @@ Implemented:
 - Memory and SQLite state stores, with audit outcomes.
 - Serialized proof archives and a transport callback for embedding in a backend.
 - A bounded Node HTTP handler and client transport.
+- A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: a configurable resource-server application, filesystem/PostgreSQL resource adapters, a production service deployment, authenticated owner administration API, MCP adapter, live GitHub connector, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. Provider data in both examples is simulated.
+Not implemented: a configuration-file resource-server application, filesystem/PostgreSQL resource adapters, a production service deployment, MCP adapter, live GitHub connector, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. Provider data in the examples is simulated.
 
 The next milestone is one server serving a registered file and a registered PostgreSQL record through the existing grant-verification flow. See the [layered roadmap](docs/roadmap.md#1-resource-server-with-filesystem-and-postgresql-adapters) and [tracking issue #3](https://github.com/farming-labs/capvine/issues/3) for scope and acceptance criteria. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state.
 
@@ -45,6 +46,7 @@ npm ci
 npm run check
 npm run example
 npm run example:network -- --workers 3
+npm run example:service
 ```
 
 The first example creates a permission for A, delegates it to B, reads one fixture issue, and demonstrates that revoking A's grant stops B's next call. No external account or model API key is needed.
@@ -110,6 +112,8 @@ const result = await b.invoke(child);
 The [integration guide](docs/integration.md) describes resource registration, grant issuance, service integration, and worker delegation. It separates the implemented HTTP boundary from proposed database and runtime adapters.
 
 ## Persist state
+
+The [persistent service guide](docs/service.md) shows one-time identity/state initialization, authenticated grant issuance, and restart behavior. The operator token belongs only in protected application code; workers receive their own signing identities and scoped grants.
 
 Use `SqliteStore` from the `./sqlite` entry in place of `MemoryStore`. It stores resources, tasks, issued root grants, revocations, and audit outcomes. Preserve the service identity across restarts through your existing secret store. The database contains no signing keys or provider credentials.
 

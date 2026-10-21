@@ -30,7 +30,7 @@ The client requests access to a resource. The application resolves that resource
 
 In the example, trusted setup selects allowed issues before workers start. A standing policy can automate issuance for an allowed set. Requests outside that set require a new authorized decision. An agent or classification model may propose a selection; application policy must still authorize it.
 
-Reads and delegation within an existing grant do not require repeated human approval. The verifier checks each invocation automatically. Additional authority requires a new authorized grant. Resource discovery and an authenticated grant-request API are application responsibilities; this prototype does not implement them.
+Reads and delegation within an existing grant do not require repeated human approval. The verifier checks each invocation automatically. Additional authority requires a new authorized grant. Resource discovery and end-user approval policy remain application responsibilities. The [persistent service](service.md) provides authenticated single-owner operator administration for issuing grants to provisioned identities.
 
 ## The code boundary
 
@@ -115,7 +115,7 @@ The following are integration patterns, not shipped or tested adapters. The next
 
 Reusing a saved read result is different from making a new request; revocation cannot erase data already returned. Approval does not replace server enforcement or deployment isolation.
 
-The PostgreSQL resource adapter would protect application data. A PostgreSQL implementation of `StateStore` would instead persist Capvine's grants and lifecycle state. These are separate integrations; the first resource-server milestone can retain SQLite for permission state. Validated configuration and trusted local bootstrap are planned for server setup; an invocation endpoint does not provide an authenticated remote administration API.
+The PostgreSQL resource adapter would protect application data. A PostgreSQL implementation of `StateStore` would instead persist Capvine's grants and lifecycle state. These are separate integrations; the first resource-server milestone can retain SQLite for permission state. The persistent service now provides protected local bootstrap and a separate authenticated loopback administration listener. A configuration-file resource server and built-in adapters remain planned.
 
 ## What scales now?
 
