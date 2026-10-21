@@ -2,7 +2,7 @@
 
 Capvine is an OSS authorization library for developers who control application resource handlers and access paths. The core supports delegated permissions for services, workers, and applications; agent tools are one integration. Resource adapters connect verified requests to external APIs or application datastores. A managed service can operate the same enforcement engine later.
 
-This is an implementation sequence, not a delivery-date commitment. Database and runtime adapters described below are planned integrations, not current features.
+This is an implementation sequence, not a delivery-date commitment. The configurable resource server, filesystem/PostgreSQL adapters, and runtime integrations described below are planned features. The next milestone is tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3).
 
 ## 0. Runnable proof of the boundary — implemented
 
@@ -19,21 +19,46 @@ This is an implementation sequence, not a delivery-date commitment. Database and
 
 **Evidence:** `npm run check`, `npm run example`, and `npm run example:network -- --workers 3`. The network scenario is an automated test too. This establishes an application permission path, not OS isolation or production readiness.
 
-## 1. One real read-only provider
+## 1. Resource server with filesystem and PostgreSQL adapters
 
-Build an authenticated owner setup flow and one GitHub issue reader. Select the connection and stable provider object identity through trusted code. Keep credentials in the connector and limit their upstream permissions. Pin or verify the actual target where provider API routes use mutable names.
+Build one server that reads a registered text file and a registered PostgreSQL record through the same `client.invoke(grant)` flow. Reuse the authority, capability profile, resource registry, HTTP transport, and lifecycle checks. No agent runtime is required. Keep `task` as the existing authorization context for a job or workflow.
 
-**Deliverables:** owner authentication integration; resource, grant, and task administration; persistent service identity; a minimal deployment with separate worker and authority access.
+```mermaid
+flowchart TB
+  Client[Application / service / worker] -->|Signed invocation and proofs| Authority[Existing Capvine authority]
+  Authority -->|Verified resource and operation| FileAdapter[Filesystem adapter]
+  Authority -->|Verified resource and operation| PgAdapter[PostgreSQL resource adapter]
+  FileAdapter --> File[Registered regular file]
+  PgAdapter --> Record[Registered database record]
+  State[(Permission state)] --- Authority
+  Setup[Protected configuration and administration] --> Authority
+```
 
-**Exit criteria:** a worker reads its selected issue; changing connection, issue, action, or owner fails before dispatch; deployment permissions deny worker access to credentials/state; restart preserves grants and revocations. Document provider limits and credential permissions.
+Deliver the layers in focused PRs, with detailed work items in [issue #3](https://github.com/farming-labs/capvine/issues/3):
 
-## 2. Application integration and resource adapters
+| Layer                                  | Required work                                                                                                                                                                                                                                                                      | Completion evidence                                                                                                                                                |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Adapter contract and resource bindings | Build on `registerOperation` and `execute(resource)`. Validate adapter configuration, supported kinds/actions, target bindings, and protected connection references. Define initialization and cleanup.                                                                            | Invalid configuration, duplicate registration, and wrong-kind dispatch fail closed; proof verification remains before adapter execution.                           |
+| Filesystem resource adapter            | Read bounded UTF-8 content from explicitly registered regular files. Define platform and file-identity semantics and confinement against traversal, links, and replacement races.                                                                                                  | Real filesystem tests cover allowed reads, unregistered targets, link/path escapes, replacement behavior, unsupported file types, and size limits.                 |
+| PostgreSQL resource adapter            | Use a protected pool and restricted database role for a predefined parameterized read, with fixed record/tenant binding and result projection. Bound results and execution time.                                                                                                   | Tests against a real ephemeral database establish the actual queried record and reject cross-record, cross-tenant, cross-connection, and write attempts.           |
+| Server composition and administration  | Add validated startup/configuration, persistent authority identity and state, adapter initialization, the existing invocation route, and graceful shutdown. Keep local bootstrap administration separate; authenticate and authorize any remote administration before enabling it. | Restart retains revocations and task state; clients cannot mint root grants, retarget resources, or obtain protected credentials through the invocation interface. |
+| Combined example and deployment guide  | Run ordinary clients against both adapters through one authority, with temporary file fixtures and ephemeral PostgreSQL. Document secret custody, supported limits, deployment isolation, and adapter responsibilities.                                                            | CI exercises both real resources, delegation, independent grants, revocation, task end, and restart.                                                               |
 
-Integrate the verified dispatch path into one application workflow or background job. Establish identity provisioning, grant assignment, and lifecycle behavior before extracting reusable runtime adapters. Document how existing roles or ACLs inform issuance policy. A database-backed read adapter should bind a grant to a defined operation and record while retaining database-side permissions.
+**Storage distinction:** SQLite can continue storing Capvine's grants, resources, tasks, revocations, and audit events. PostgreSQL as a protected application resource is independent of PostgreSQL as a future permission-state backend; the latter is not required for this milestone.
 
-**Deliverables:** client identity provisioning, serialized grant assignment, job/resource binding, delegation to workers, and verification on new calls after resume/retry. Optional agent-tool and MCP adapters use the same verifier; MCP sessions require authenticated worker/task bindings rather than model-supplied names.
+**Exit criteria:** the same client API reads both resources with separate grants. Changes to resource/action/task/identity, invalid proofs, expiry, and revocation reject before resource-handler execution. Adapter tests also verify the actual file opened and database record queried; a successful proof check alone is insufficient. The authority identity and lifecycle state survive restart without resetting permissions.
 
-**Exit criteria:** a complete application workflow works; nested calls cannot expand authority; one job cannot use another job's session; revoked grants fail after workflow restart; direct and adapted calls enforce the same rules. Database adapter tests must verify the actual queried record and permitted operation, not just a successful proof check.
+**Scope:** exact read operations with bounded JSON-compatible results. Directory trees, wildcards, caller-selected paths, arbitrary SQL, writes, binary streaming, native database authorization extensions, and OS sandboxing need separate designs. The adapter contract does not replace server verification or database/OS access controls.
+
+## 2. External-service connectors and application integrations
+
+Extend the resource server with a live read-only external API connector, initially the existing GitHub issue example. Select the connection and stable provider object identity through trusted administration. Validate the actual target where API routes use mutable names and keep upstream credentials narrowly scoped.
+
+Integrate with application workflows and background jobs, then extract reusable runtime adapters from demonstrated lifecycle needs. Existing roles or ACLs may inform grant issuance. Optional agent-tool and MCP adapters use the same verifier rather than creating another permission path.
+
+**Deliverables:** authenticated account/resource setup, client identity provisioning, serialized grant assignment, workflow binding, child delegation, and verification on new calls after resume/retry. MCP sessions require authenticated worker/task bindings rather than model-supplied names.
+
+**Exit criteria:** a real application workflow succeeds; nested calls cannot expand authority; jobs cannot reuse another job's authenticated session; revoked grants fail after workflow restart; direct and adapted calls enforce the same rules. Document upstream permissions, target validation, and service limits.
 
 ## 3. An OSS release with a supported deployment
 
@@ -61,4 +86,4 @@ Operate the same OSS verifier with hosted storage, tenant provisioning, identity
 
 ## Recommended next milestone
 
-Complete phases 1–2 for **reading selected GitHub issues through an application workflow**. This establishes a live connector, authenticated owner setup, deployment isolation, and end-to-end lifecycle behavior. Keep the permission profile independent of that provider so subsequent database and service adapters can use the same verification path.
+Complete phase 1: **one server, one registered-file reader, and one registered PostgreSQL-record reader**, tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3). This validates the same permission path across two different resource types before broadening the capability profile or adding provider-specific authentication and runtime adapters.

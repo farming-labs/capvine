@@ -30,7 +30,9 @@ Implemented:
 - A bounded Node HTTP handler and client transport.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: a production service deployment, authenticated owner administration API, MCP adapter, live GitHub connector, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. Provider data in both examples is simulated.
+Not implemented: a configurable resource-server application, filesystem/PostgreSQL resource adapters, a production service deployment, authenticated owner administration API, MCP adapter, live GitHub connector, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. Provider data in both examples is simulated.
+
+The next milestone is one server serving a registered file and a registered PostgreSQL record through the existing grant-verification flow. See the [layered roadmap](docs/roadmap.md#1-resource-server-with-filesystem-and-postgresql-adapters) and [tracking issue #3](https://github.com/farming-labs/capvine/issues/3) for scope and acceptance criteria. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state.
 
 ## Run the example
 
