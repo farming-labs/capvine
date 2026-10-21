@@ -4,6 +4,8 @@ Capvine can connect to a provider directly, save encrypted credentials, and refr
 
 The implementation uses `oauth4webapi` for OAuth/OIDC processing. It includes a Google provider and a Gmail adapter for reading one registered message's subject and snippet. Other providers can implement the `AccountProvider` interface. The supplied `createOidcProvider` supports confidential authorization-code clients using S256 PKCE, RS256 ID tokens, a UserInfo endpoint, client-secret POST authentication, and refresh tokens. It is not an automatic adapter for every OAuth provider; Slack and GitHub account onboarding still need their own provider integration.
 
+For an interactive browser flow, use the [account connection console](account-console.md): `npm run console:accounts -- --fixture`. It also supports protected Google configuration.
+
 ## Run the working example
 
 ```sh
@@ -60,7 +62,7 @@ const account = await accounts.complete({
 });
 ```
 
-The owner and session are authenticated application values, never values trusted from a request body or model prompt. Use a cryptographically random session nonce of at least 32 characters and a protected browser session. Protect connection initiation against CSRF. Derive `callbackUrl` from your configured public origin and the incoming path/query; do not trust an arbitrary caller-supplied destination. The library checks the fixed callback origin/path, one-use state, session/owner binding, ten-minute expiry, PKCE, nonce, issuer, audience, ID-token signature, and provider subject. It does not provide a browser login system, HTTP callback server, consent UI, or CSRF middleware.
+The owner and session are authenticated application values, never values trusted from a request body or model prompt. Use a cryptographically random session nonce of at least 32 characters and a protected browser session. Protect connection initiation against CSRF. Derive `callbackUrl` from your configured public origin and the incoming path/query; do not trust an arbitrary caller-supplied destination. The library checks the fixed callback origin/path, one-use state, session/owner binding, ten-minute expiry, PKCE, nonce, issuer, audience, ID-token signature, and provider subject. The account manager itself does not provide browser routes. The optional [local account console](account-console.md) supplies owner login, session/CSRF controls, HTTP callbacks, and connect/disconnect/reconnect screens; applications embedding the manager directly still own those controls.
 
 After completion, use the returned subject and a message selected through owner-authorized setup:
 

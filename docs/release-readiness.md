@@ -10,7 +10,7 @@ Tests pin the decoded wire version, capability fields, and archive identity. A d
 
 Before the first published preview, review the API with application developers and choose a version in a dedicated release PR. For subsequent 0.x previews, retain exact-version pins in integration examples; breaking API, schema, or wire changes require a new minor line and migration notes, while compatible fixes use patches. A future 1.0 release requires an explicit stable-support commitment. No currently published compatibility guarantee is implied by this proposed release policy.
 
-Public entries cover the core verifier/client, SQLite, HTTP, identity files, authenticated administration, persistent service, saved workflow approvals, adapter composition, filesystem, PostgreSQL, GitHub, account management, OAuth/OIDC, Gmail, MCP, and configuration. The CLI is `capvine`. The adapter entries are Node server integrations; the package does not promise browser or edge-runtime compatibility. Review declaration dependencies and the built artifact, not just source imports.
+Public entries cover the core verifier/client, SQLite, HTTP, identity files, authenticated administration, persistent service, saved workflow approvals, adapter composition, filesystem, PostgreSQL, GitHub, account management, the local browser account console, OAuth/OIDC, Gmail, MCP, and configuration. The CLI is `capvine`. The adapter entries are Node server integrations; the package does not promise browser or edge-runtime compatibility. Review declaration dependencies and the built artifact, not just source imports.
 
 ## Evidence available
 
@@ -19,6 +19,7 @@ Public entries cover the core verifier/client, SQLite, HTTP, identity files, aut
 - Filesystem and PostgreSQL tests establish the actual selected targets and bounded reads; PostgreSQL runs as real temporary clusters.
 - The public GitHub smoke example checks a live provider without account credentials. MCP tests and a real stdio worker exercise provisioned session bindings.
 - Direct account tests and `npm run example:accounts` exercise OAuth/OIDC code exchange, encrypted storage, refresh rotation, restart, and delegated reads against a local provider fixture. Live Google consent and refresh are still a separate gate.
+- `test/account-console.test.ts` exercises real HTTP login, session rotation/expiry/logout, origin/CSRF rejection, session-bound OAuth callbacks, account listing, reconnect, and persistence with the provider fixture. The console has also been checked in a browser; it remains a single-owner loopback application.
 - The [isolated-worker reference check](../examples/isolation/README.md) passed Linux CI: signed calls work through a Unix socket while direct credential access, tampering, and external/provider networking fail. This does not validate a macOS desktop or arbitrary production host.
 - `npm run package:check`, after building, creates and inspects a tarball, installs it in a temporary consumer without dev dependencies, imports every public entry, checks consumer TypeScript imports, and invokes the installed CLI. It does not publish or configure registry access.
 

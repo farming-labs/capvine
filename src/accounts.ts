@@ -208,6 +208,28 @@ export async function openAccountManager(options: {
       if (closed) throw new Error("Account manager is closed");
       return metadata(owned(ownerId, id).value);
     },
+    list(ownerId: string, options: { after?: string; limit?: number } = {}) {
+      if (closed) throw new Error("Account manager is closed");
+      const after = options.after ?? "";
+      const limit = options.limit ?? 25;
+      if (
+        !ownerId ||
+        ownerId.length > 256 ||
+        !/^[0-9]{0,16}$/.test(after) ||
+        !Number.isSafeInteger(Number(after)) ||
+        !Number.isSafeInteger(limit) ||
+        limit < 1 ||
+        limit > 100
+      )
+        throw new Error("Invalid account listing");
+      const rows = store.scan<Connection>("connection", Number(after), limit);
+      return {
+        connections: rows
+          .filter((row) => row.value.ownerId === ownerId)
+          .map((row) => metadata(row.value)),
+        nextCursor: rows.length === limit ? rows.at(-1)!.cursor : null,
+      };
+    },
     disconnect(ownerId: string, id: string) {
       if (closed) throw new Error("Account manager is closed");
       const record = owned(ownerId, id);

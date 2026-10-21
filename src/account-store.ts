@@ -113,6 +113,22 @@ export async function openAccountDatabase(
     const database = db;
     let closed = false;
     return {
+      scan<T>(kind: string, after: number, limit: number) {
+        return database
+          .prepare(
+            "SELECT rowid AS position,id,revision,value FROM account_records WHERE kind=? AND rowid>? ORDER BY rowid LIMIT ?",
+          )
+          .all(kind, after, limit)
+          .map((row) => ({
+            cursor: String(row.position),
+            value: unseal(
+              kind,
+              String(row.id),
+              Number(row.revision),
+              row.value as Uint8Array,
+            ) as T,
+          }));
+      },
       get<T>(
         kind: string,
         id: string,
