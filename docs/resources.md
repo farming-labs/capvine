@@ -88,4 +88,4 @@ Results are limited to two candidate rows, 16 projected columns, and 128 KiB of 
 
 `test/postgres.test.ts` starts a real private temporary PostgreSQL cluster through `pg_config`, `initdb`, and `pg_ctl`; it never uses an existing database. Tests cover projected reads, record/tenant/connection changes, SQL-like parameter values, write attempts before dispatch, broad roles, changed database/table identity, result bounds, lock timeouts, and recovery after query failure. PostgreSQL 14+ and a non-root test user are required. CI installs PostgreSQL and runs these tests; tests fail rather than silently skip when required binaries are missing.
 
-PostgreSQL application records remain separate from the SQLite permission/lifecycle store. The combined configuration-file server is still in progress under [issue #3](https://github.com/farming-labs/capvine/issues/3).
+PostgreSQL application records remain separate from the SQLite permission/lifecycle store. Run the [combined server demonstration](server-command.md) with `npm run example:resources`.

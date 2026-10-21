@@ -19,7 +19,9 @@
     "format:check": "prettier --check .",
     "example:service": "tsx examples/service.ts",
     "example:github": "tsx examples/github.ts",
-    "example:mcp": "tsx examples/mcp.ts"
+    "example:mcp": "tsx examples/mcp.ts",
+    "server": "tsx src/cli.ts",
+    "example:resources": "tsx examples/resources.ts"
   },
   "exports": {
     ".": {
@@ -65,6 +67,10 @@
     "./postgres": {
       "types": "./dist/postgres.d.ts",
       "default": "./dist/postgres.js"
+    },
+    "./configuration": {
+      "types": "./dist/configuration.d.ts",
+      "default": "./dist/configuration.js"
     }
   },
   "files": [
@@ -91,5 +97,8 @@
     "prettier": "3.6.2",
     "tsx": "4.20.6",
     "typescript": "5.9.3"
+  },
+  "bin": {
+    "capvine": "./dist/cli.js"
   }
 }

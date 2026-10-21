@@ -2,7 +2,7 @@
 
 Capvine is an OSS authorization library for developers who control application resource handlers and access paths. The core supports delegated permissions for services, workers, and applications; agent tools are one integration. Resource adapters connect verified requests to external APIs or application datastores. A managed service can operate the same enforcement engine later.
 
-This is an implementation sequence, not a delivery-date commitment. Persistent service composition, filesystem/PostgreSQL adapters, GitHub reads, and a provisioned MCP bridge are implemented. The configuration-file application remains in progress. The next milestone is tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3).
+This is an implementation sequence, not a delivery-date commitment. Persistent service composition, filesystem/PostgreSQL adapters, GitHub reads, and a provisioned MCP bridge are implemented. The [configuration-file server and combined real-resource example](server-command.md) are implemented. Deployment and release readiness remain separate unfinished work. The next milestone is tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3).
 
 ## 0. Runnable proof of the boundary — implemented
 
@@ -19,7 +19,7 @@ This is an implementation sequence, not a delivery-date commitment. Persistent s
 
 **Evidence:** `npm run check`, `npm run example`, and `npm run example:network -- --workers 3`. The network scenario is an automated test too. This establishes an application permission path, not OS isolation or production readiness.
 
-## 1. Resource server with filesystem and PostgreSQL adapters
+## 1. Resource server with filesystem and PostgreSQL adapters — implemented
 
 ### Foundation and integration checklist
 
@@ -34,9 +34,9 @@ These prerequisites remain visible independently of the adapter work:
 - [ ] Independent security review and explicit publication approval.
 - [ ] npm trusted publishing and release automation.
 
-The first two items provide a local service foundation, not production readiness. The filesystem and PostgreSQL adapters are implemented; the configuration-file application is still pending. External review and publication gates cannot be satisfied by internal test results.
+The first two items provide a local service foundation, not production readiness. The filesystem and PostgreSQL adapters are implemented; the configuration-file application is implemented. External review and publication gates cannot be satisfied by internal test results.
 
-**Delivered so far:** the adapter lifecycle contract, protected server composition, and [filesystem/PostgreSQL readers](resources.md), verified by `test/filesystem.test.ts` and real-database `test/postgres.test.ts`. The combined configuration-file example remains unfinished.
+**Delivered so far:** the adapter lifecycle contract, protected server composition, and [filesystem/PostgreSQL readers](resources.md), verified by `test/filesystem.test.ts` and real-database `test/postgres.test.ts`. The [server command](server-command.md) and `npm run example:resources` complete the combined workflow, including separate client/server processes and restart persistence.
 
 Build one server that reads a registered text file and a registered PostgreSQL record through the same `client.invoke(grant)` flow. Reuse the authority, capability profile, resource registry, HTTP transport, and lifecycle checks. No agent runtime is required. Keep `task` as the existing authorization context for a job or workflow.
 
@@ -103,4 +103,4 @@ Operate the same OSS verifier with hosted storage, tenant provisioning, identity
 
 ## Recommended next milestone
 
-Complete phase 1: **one server, one registered-file reader, and one registered PostgreSQL-record reader**, tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3). This validates the same permission path across two different resource types before broadening the capability profile or adding provider-specific authentication and runtime adapters.
+Validate the deployment boundary and prepare an independently reviewed OSS release. The local service, adapters, live public GitHub read, and provisioned MCP bridge are implemented. Credential/network containment, private-account onboarding, remote multi-tenant administration/MCP sessions, independent review, and publication still need their own evidence. Keep those gates open until they are actually satisfied.

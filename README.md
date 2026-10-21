@@ -28,14 +28,15 @@ Implemented:
 - Memory and SQLite state stores, with audit outcomes.
 - Serialized proof archives and a transport callback for embedding in a backend.
 - A bounded Node HTTP handler and client transport.
+- A validated server command combining real file and PostgreSQL reads through one permission path.
 - Registered-file and PostgreSQL-record adapters with bounded reads and protected target bindings.
 - A live read-only GitHub issue connector and a provisioned per-worker MCP bridge.
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: a configuration-file resource-server application, a production service deployment, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. The live GitHub example uses public data; private-account onboarding remains application-owned.
+Not implemented: a production service deployment, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. The live GitHub example uses public data; private-account onboarding remains application-owned.
 
-The [filesystem and PostgreSQL adapters](docs/resources.md) are implemented. The next milestone completes one server serving a registered file and a registered PostgreSQL record through the existing grant-verification flow. See the [layered roadmap](docs/roadmap.md#1-resource-server-with-filesystem-and-postgresql-adapters) and [tracking issue #3](https://github.com/farming-labs/capvine/issues/3) for scope and acceptance criteria. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state.
+The [resource server command](docs/server-command.md) combines both adapters. Run `npm run example:resources` for the full separate-process demonstration, including revocation and restart. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state. The [roadmap](docs/roadmap.md) retains the remaining deployment and release gates.
 
 ## Run the example
 
@@ -49,6 +50,7 @@ npm run check
 npm run example
 npm run example:network -- --workers 3
 npm run example:service
+npm run example:resources
 ```
 
 The first example creates a permission for A, delegates it to B, reads one fixture issue, and demonstrates that revoking A's grant stops B's next call. No external account or model API key is needed.

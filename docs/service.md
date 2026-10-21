@@ -1,6 +1,6 @@
 # Persistent service and administration
 
-The `./service` entry composes the existing verifier, HTTP transport, SQLite state, and authenticated operator administration. Run `npm run example:service` for a temporary local demonstration. Applications still provide trusted resource bindings and operation handlers; a configuration-file application and built-in resource adapters are separate work.
+The `./service` entry composes the existing verifier, HTTP transport, SQLite state, and authenticated operator administration. Run `npm run example:service` for a temporary local demonstration. Applications still provide trusted resource bindings and operation handlers; the [configuration-file application](server-command.md) composes built-in filesystem and PostgreSQL adapters.
 
 ## Bootstrap and start
 
