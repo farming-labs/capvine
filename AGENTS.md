@@ -13,6 +13,7 @@ Capvine is an experimental TypeScript library for delegated, resource-bound auth
 - Keep the prototype package private until release readiness and publishing have been explicitly addressed.
 - Do not put real credentials, personal account data, or signing keys into fixtures or commits.
 - Use neutral fixture identities and standalone technical language in documentation, examples, issues, and commit messages. Do not include personal deployment details or conversation history.
+- Use descriptive branch names with purpose-based prefixes such as `feat/`, `fix/`, `docs/`, or `test/`. Keep branch names and PR labels free of tool or vendor branding.
 - Run `npm run check` and `npm run example` before handing off changes.
 
 Use Node.js 24 or later.

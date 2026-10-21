@@ -2,7 +2,7 @@
 
 Capvine is an OSS authorization library for developers who control application resource handlers and access paths. The core supports delegated permissions for services, workers, and applications; agent tools are one integration. Resource adapters connect verified requests to external APIs or application datastores. A managed service can operate the same enforcement engine later.
 
-This is an implementation sequence, not a delivery-date commitment. Persistent service composition, filesystem/PostgreSQL adapters, GitHub reads, and a provisioned MCP bridge are implemented. The [configuration-file server and combined real-resource example](server-command.md) are implemented. Deployment and release readiness remain separate unfinished work. The next milestone is tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3).
+This is an implementation sequence, not a delivery-date commitment. Persistent service composition, filesystem/PostgreSQL adapters, GitHub reads, and a provisioned MCP bridge are implemented. The [configuration-file server and combined real-resource example](server-command.md) complete the resource-server milestone in [issue #3](https://github.com/farming-labs/capvine/issues/3). Reference-container isolation and release preparation are verified in CI. External review, production-host validation, and publication gates remain open in [issue #16](https://github.com/farming-labs/capvine/issues/16).
 
 ## 0. Runnable proof of the boundary — implemented
 
@@ -37,9 +37,9 @@ These prerequisites remain visible independently of the adapter work:
 
 The first two items provide a local service foundation, not production readiness. The filesystem and PostgreSQL adapters are implemented; the configuration-file application is implemented. External review and publication gates cannot be satisfied by internal test results.
 
-**Delivered so far:** the adapter lifecycle contract, protected server composition, and [filesystem/PostgreSQL readers](resources.md), verified by `test/filesystem.test.ts` and real-database `test/postgres.test.ts`. The [server command](server-command.md) and `npm run example:resources` complete the combined workflow, including separate client/server processes and restart persistence.
+**Delivered:** the adapter lifecycle contract, protected server composition, and [filesystem/PostgreSQL readers](resources.md), verified by `test/filesystem.test.ts` and real-database `test/postgres.test.ts`. The [server command](server-command.md) and `npm run example:resources` complete the combined workflow, including separate client/server processes and restart persistence.
 
-Build one server that reads a registered text file and a registered PostgreSQL record through the same `client.invoke(grant)` flow. Reuse the authority, capability profile, resource registry, HTTP transport, and lifecycle checks. No agent runtime is required. Keep `task` as the existing authorization context for a job or workflow.
+One server reads a registered text file and a registered PostgreSQL record through the same `client.invoke(grant)` flow. It reuses the authority, capability profile, resource registry, HTTP transport, and lifecycle checks. No agent runtime is required. `task` remains the authorization context for a job or workflow.
 
 ```mermaid
 flowchart TB
@@ -52,7 +52,7 @@ flowchart TB
   Setup[Protected configuration and administration] --> Authority
 ```
 
-Deliver the layers in focused PRs, with detailed work items in [issue #3](https://github.com/farming-labs/capvine/issues/3):
+These layers were delivered in focused PRs linked from [issue #3](https://github.com/farming-labs/capvine/issues/3):
 
 | Layer                                  | Required work                                                                                                                                                                                                                                                                      | Completion evidence                                                                                                                                                |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -80,9 +80,9 @@ Integrate with application workflows and background jobs, then extract reusable 
 
 ## 3. An OSS release with a supported deployment
 
-Review API ergonomics with application developers, specify the supported ucanto format/version, add schema migrations, and define identity backup/rotation and grant invalidation. Improve audit inspection without logging secrets or resource contents by default. Define and test storage failure behavior.
+The [release preparation](release-readiness.md) defines the supported ucanto format/version, package surface checks, dependency policy, and publication gates. Schema versioning, identity backup/rotation limits, bounded audit inspection, and fail-closed storage behavior are documented and tested. CI installs the packed artifact into a fresh consumer and checks its runtime and type exports and installed CLI.
 
-**Deliverables:** stable package surface, deployment guide, authenticated administration example, storage lifecycle, operational limits, dependency/update policy, and narrowly scoped npm trusted publishing.
+**Remaining work:** API review with application developers, independent security review, validation on the intended production host, explicit release approval, and npm ownership and trusted-publishing setup. Track these gates in [issue #16](https://github.com/farming-labs/capvine/issues/16); no publishing workflow is enabled.
 
 **Exit criteria:** independent security review of the profile, verifier integration, and stated deployment boundary; integration/failure tests in that deployment; explicit maintainer approval for publication. The source remains public and MIT licensed while the package is private.
 
@@ -104,4 +104,4 @@ Operate the same OSS verifier with hosted storage, tenant provisioning, identity
 
 ## Recommended next milestone
 
-Validate the deployment boundary and prepare an independently reviewed OSS release. The local service, adapters, live public GitHub read, and provisioned MCP bridge are implemented. Credential/network containment, private-account onboarding, remote multi-tenant administration/MCP sessions, independent review, and publication still need their own evidence. Keep those gates open until they are actually satisfied.
+Complete the [external review and publication gates](https://github.com/farming-labs/capvine/issues/16) for the read-only OSS milestone. The local service, adapters, live public GitHub read, provisioned MCP bridge, constrained reference-container isolation, and package checks are implemented. Production-host containment and operations, independent review, and publication still need their own evidence. Private-account onboarding and remote multi-tenant administration/MCP sessions remain separate integration work. Keep those gates open until they are actually satisfied.
