@@ -21,6 +21,21 @@ This is an implementation sequence, not a delivery-date commitment. The configur
 
 ## 1. Resource server with filesystem and PostgreSQL adapters
 
+### Foundation and integration checklist
+
+These prerequisites remain visible independently of the adapter work:
+
+- [x] Persistent authority identity and authenticated single-owner operator administration ([issue #5](https://github.com/farming-labs/capvine/issues/5)); verified by `test/service.test.ts` and `npm run example:service`.
+- [x] Transactional state schema versioning, service/owner binding, restart checks, and bounded audit inspection.
+- [ ] Live read-only GitHub connector with actual provider target validation.
+- [ ] MCP integration bound to a provisioned worker identity, task, and grants.
+- [ ] Deployment checks that establish credential and network isolation from untrusted workers.
+- [ ] API review with adopters and a supported release/version policy.
+- [ ] Independent security review and explicit publication approval.
+- [ ] npm trusted publishing and release automation.
+
+The first two items provide a local service foundation, not production readiness. Built-in resource adapters and a configuration-file application are still pending. External review and publication gates cannot be satisfied by internal test results.
+
 Build one server that reads a registered text file and a registered PostgreSQL record through the same `client.invoke(grant)` flow. Reuse the authority, capability profile, resource registry, HTTP transport, and lifecycle checks. No agent runtime is required. Keep `task` as the existing authorization context for a job or workflow.
 
 ```mermaid

@@ -24,7 +24,7 @@ The repository tests explicit negative cases: changed resources, operations, tas
 ## Current limitations
 
 - Both examples use simulated provider data. The network example has real HTTP and separate processes but runs under one OS user; it does not demonstrate hostile-code containment.
-- Demo administration uses private parent-process IPC with fixed local policy. There is no implemented owner login, public grant endpoint, or production credential store.
+- Network-demo administration uses private parent-process IPC. The persistent service adds separate loopback administration authenticated by a random operator token, bound to one configured owner. There is no browser login, multi-tenant administration, or production credential store. See [service deployment constraints](docs/service.md).
 - The HTTP handler rejects requests with an Origin header; it is intended for server runtimes, not browser sessions. This header check is not client authentication: signatures and proof validation authenticate invocations.
 - The HTTP handler admits at most 16 requests concurrently per handler instance. Request-body reading times out after five seconds, but handlers need their own execution deadlines. Client disconnects/timeouts do not cancel an already dispatched operation. There are no automatic retries.
 - Requests are repeatable. There is no replay ledger, single-use consumption, atomic budget accounting, or provider idempotency integration. Use only repeatable reads for this prototype.

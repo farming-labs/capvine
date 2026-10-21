@@ -16,7 +16,8 @@
     "example:network": "tsx examples/network/demo.ts",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "example:service": "tsx examples/service.ts"
   },
   "exports": {
     ".": {
@@ -30,6 +31,18 @@
     "./http": {
       "types": "./dist/http.d.ts",
       "default": "./dist/http.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "default": "./dist/service.js"
+    },
+    "./administration": {
+      "types": "./dist/administration.d.ts",
+      "default": "./dist/administration.js"
+    },
+    "./identity-file": {
+      "types": "./dist/identity-file.d.ts",
+      "default": "./dist/identity-file.js"
     }
   },
   "files": [
