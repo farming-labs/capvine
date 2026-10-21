@@ -50,13 +50,15 @@ const parent = await admin.issue({
 
 The token authenticates one configured operator/owner. The server supplies that owner to the issuance policy; request fields cannot override it. Only configured resources with matching ownership and registered operations can receive root grants. Root grants issued through this endpoint last at most one hour. The token permits broad administration within this one service: never provide it to a worker, model, tool, or untrusted browser.
 
-Give the worker its own identity, the pinned service identity/endpoint, and the serialized grant. It uses the existing `createClient().invoke()` and `delegate()` APIs; it never needs the administration token. Delegation within an existing grant does not require another admin request or human approval. A new root grant does require the authenticated operator/application policy.
+Give the worker its own identity, the pinned service identity/endpoint, and the serialized grant. It uses the existing `createClient().invoke()` and `delegate()` APIs; it never needs the administration token. Delegation within an existing grant does not require another admin request or human approval. A new root grant does require the authenticated operator/application policy. The [saved workflow API](workflow-approvals.md) lets that application issue new grants from a persisted owner approval without a new human prompt; it is available on both `startService` and `startResourceServer`.
 
 `admin.revoke(rootCid)` revokes a recorded root and its descendants. `admin.endTask(taskId)` disables the task. Child CIDs remain revocable through the privileged embedded store API, but the operator HTTP endpoint accepts only recorded roots. `admin.audit()` returns the most recent 100 invocation outcomes. Results contain no signing keys, bearer tokens, or resource contents; this is not a complete administration-change ledger.
 
 Administration accepts only bounded JSON `POST /admin` commands and refuses browser Origin headers. Both clients refuse redirects and require HTTPS outside loopback. A leaked administration token grants administrative authority; the format check cannot establish token entropy. Use the generated value.
 
 ## Persistence and shutdown
+
+Saved workflow approvals use the existing records table and create their lifecycle task in the same transaction; no additional SQL schema migration is needed.
 
 SQLite schema version 1 adds service metadata to the original prototype's three tables. The store migrates the known version-0 layout transactionally and preserves records, revocations, and audit entries. Unknown schemas/versions fail closed. Populated legacy state without service metadata cannot be attached to the service automatically: migration needs an explicit identity/ownership review. Fresh service state is bound during initialization.
 

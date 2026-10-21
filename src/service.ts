@@ -13,6 +13,7 @@ import { createAuthority } from "./server.ts";
 import { SqliteStore } from "./sqlite.ts";
 import { createHttpHandler } from "./http.ts";
 import { createAdministrationHandler } from "./administration.ts";
+import { createWorkflowApprovals } from "./approvals.ts";
 import {
   assertPrivateDirectory,
   initializeIdentity,
@@ -202,6 +203,11 @@ export async function startService(options: {
           owner: options.owner,
           token,
           audit: () => store!.audit(100),
+          approvals: createWorkflowApprovals({
+            authority,
+            store,
+            owner: options.owner,
+          }),
         }),
       ),
     );

@@ -30,6 +30,8 @@ The repository tests explicit negative cases: changed resources, operations, tas
 - Requests are repeatable. There is no replay ledger, single-use consumption, atomic budget accounting, or provider idempotency integration. Use only repeatable reads for this prototype.
 - The filesystem adapter requires protected local directories and a separate service OS identity. It pins opened files, but it is not safe against hostile directory writers sharing that identity. See [file identity and supported deployment](docs/resources.md).
 - Read-only handler behavior is an application responsibility; the library cannot prove that a callback has no external effects.
+- Saved approvals are privileged owner decisions, not model classifications. Renewal takes the fixed recipient and scope from stored policy; disabling ends the shared task and blocks dependent grants. The operator token can still authorize different workflows.
+- The optional Executor runtime, companion app, and its account configuration are trusted. The demonstration uses fixture credentials and does not establish real OAuth refresh or OS containment; see [Executor integration](docs/executor.md).
 - Revocation stops subsequent authorization. It does not cancel in-flight operations or erase returned data.
 - A permitted read can still disclose sensitive information to its recipient. Capvine does not enforce information-flow restrictions on returned data.
 - A valid capability does not make model output correct, remove prompt injection, or protect an unrestricted browser, shell, operating system, or network path.

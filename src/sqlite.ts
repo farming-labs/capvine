@@ -1,13 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
-import type {
-  AuditEvent,
-  GrantRecord,
-  Resource,
-  StateStore,
-  Task,
-} from "./types.ts";
+import type { ApprovalStore, WorkflowApproval } from "./approvals.ts";
+import type { AuditEvent, GrantRecord, Resource, Task } from "./types.ts";
 
-export class SqliteStore implements StateStore {
+export class SqliteStore implements ApprovalStore {
   #db: DatabaseSync;
 
   constructor(path: string) {
@@ -98,6 +93,26 @@ export class SqliteStore implements StateStore {
       .prepare("SELECT value FROM capvine_records WHERE kind = ? AND id = ?")
       .get(kind, id);
     return row ? (JSON.parse(String(row.value)) as T) : undefined;
+  }
+
+  addApproval(approval: WorkflowApproval): void {
+    this.#db.exec("BEGIN IMMEDIATE");
+    try {
+      this.#add("approval", approval.id, approval);
+      this.addTask({
+        id: approval.taskId,
+        ownerId: approval.ownerId,
+        active: true,
+      });
+      this.#db.exec("COMMIT");
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  getApproval(id: string): WorkflowApproval | undefined {
+    return this.#get("approval", id);
   }
 
   addResource(resource: Resource): void {
