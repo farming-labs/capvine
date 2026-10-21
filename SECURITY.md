@@ -8,7 +8,7 @@ The adversary may control a client, ignore the SDK, sign arbitrary requests with
 
 The authority process, its signing key, state store, owner authorization callback, operation implementations, and provider connectors are trusted. Workers must not be able to modify those components, read another worker's keys, or directly use broad provider credentials.
 
-The repository tests explicit negative cases: changed resources, operations, tasks, services, identities, signatures, expiry expansion, missing proofs, unknown roots, revocation, task termination, malformed archives, and excessive delegation depth. HTTP tests also cover size limits, redirect refusal, error redaction, and concurrency backpressure. The network scenario exercises separately signed worker requests across processes. Tests are evidence for these behaviors, not a general security guarantee.
+The repository tests explicit negative cases: changed resources, operations, tasks, services, identities, signatures, expiry expansion, missing proofs, unknown roots, revocation, task termination, malformed archives, and excessive delegation depth. HTTP tests also cover size limits, redirect refusal, error redaction, and concurrency backpressure. The network scenario exercises separately signed worker requests across processes. The [container reference check](examples/isolation/README.md) also tests credential mounts, read-only filesystems, and disabled worker networking in Linux CI; its precise boundary is documented separately. Tests are evidence for these behaviors, not a general security guarantee.
 
 ## Integration requirements
 

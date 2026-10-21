@@ -24,6 +24,7 @@ jobs:
       - run: npm run example:service
       - run: npm run example:mcp
       - run: npm run example:resources
+      - run: npm run package:check
 
   isolation:
     runs-on: ubuntu-latest

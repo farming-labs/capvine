@@ -115,6 +115,75 @@ test("a serialized parent-child chain reaches exactly the bound resource", async
   assert.equal(f.calls(), 1);
 });
 
+test("the supported proof archive retains the pinned UCAN version and exact capability", async () => {
+  const f = await fixture();
+  const restored = await decodeGrant(await encodeGrant(f.child));
+  assert.equal(restored.version, "0.9.1");
+  assert.deepEqual(restored.capabilities, [f.claim]);
+  assert.equal(restored.cid.toString(), f.child.cid.toString());
+});
+
+for (const failure of ["task", "grant", "revocation", "audit"] as const) {
+  test(`storage failure during ${failure} checks denies a raw invocation before dispatch`, async () => {
+    class FailingStore extends MemoryStore {
+      failing = false;
+      override getTask(id: string) {
+        if (this.failing && failure === "task")
+          throw new Error("State unavailable");
+        return super.getTask(id);
+      }
+      override getGrant(id: string) {
+        if (this.failing && failure === "grant")
+          throw new Error("State unavailable");
+        return super.getGrant(id);
+      }
+      override isRevoked(id: string) {
+        if (this.failing && failure === "revocation")
+          throw new Error("State unavailable");
+        return super.isRevoked(id);
+      }
+      override appendAudit(event: Parameters<MemoryStore["appendAudit"]>[0]) {
+        if (this.failing && failure === "audit")
+          throw new Error("State unavailable");
+        super.appendAudit(event);
+      }
+    }
+    const store = new FailingStore();
+    const f = await fixture(store);
+    store.failing = true;
+    await assert.rejects(f.send());
+    assert.equal(f.calls(), 0);
+    store.failing = false;
+    assert.deepEqual(await f.send(), { issue: "issue42" });
+    assert.equal(f.calls(), 1);
+  });
+}
+
+test("issuance does not return a root grant when persistence fails", async () => {
+  class FailingStore extends MemoryStore {
+    failing = false;
+    override addGrant(record: Parameters<MemoryStore["addGrant"]>[0]) {
+      if (this.failing) throw new Error("Grant persistence failed");
+      super.addGrant(record);
+    }
+  }
+  const store = new FailingStore();
+  const f = await fixture(store);
+  store.failing = true;
+  await assert.rejects(
+    f.authority.issue({
+      actor: "demo-owner",
+      audience: f.a,
+      taskId: "task1",
+      resource: "urn:capvine:resource:issue42",
+      action: "github/issue.read",
+      expiresAt: new Date(Date.now() + 60_000),
+    }),
+    /persistence failed/,
+  );
+  assert.equal(f.calls(), 0);
+});
+
 test("owner policy rejects another user's grant request", async () => {
   const f = await fixture();
   await assert.rejects(

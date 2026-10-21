@@ -21,7 +21,8 @@
     "example:github": "tsx examples/github.ts",
     "example:mcp": "tsx examples/mcp.ts",
     "server": "tsx src/cli.ts",
-    "example:resources": "tsx examples/resources.ts"
+    "example:resources": "tsx examples/resources.ts",
+    "package:check": "node scripts/check-package.mjs"
   },
   "exports": {
     ".": {
