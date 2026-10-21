@@ -85,7 +85,7 @@ Task termination disables all grants bound to that task. Neither operation can u
 
 ## HTTP transport
 
-The Node `./http` entry exports `createHttpHandler`, `createHttpTransport`, and `HttpTransportError`. Mount the handler on a protected service; it accepts only `POST /invoke` with `application/vnd.ipld.car`. It serves no issuance, registration, revocation, or other administration routes. Pass `authority.execute` as its executor.
+The Node `./http` entry exports `createHttpHandler`, `createHttpTransport`, and `HttpTransportError`. Mount the handler on a protected service; it accepts only `POST /invoke` with `application/vnd.ipld.car`. It serves no issuance, registration, revocation, or other administration routes. Pass `authority.execute` as its request dispatcher.
 
 Requests are bounded to 64 KiB and tool result payloads to 1 MiB. The handler limits admitted concurrency to 16 and returns `429` when full. It rejects browser Origin headers, bounds body-read time, and returns generic errors instead of internal exception details. An authorization failure maps to `403` and then `PermissionDenied` on the client.
 
@@ -95,4 +95,4 @@ The demo keeps its control channel private to the supervisor and authority throu
 
 ## Existing components and Capvine code
 
-ucanto supplies signing, proof representation, serialization, and proof validation. Capvine supplies this constrained permission profile, owner-policy integration, resource and task binding, server dispatch, and lifecycle persistence. The caller supplies authentication, runtime isolation, transport deployment, secret storage, and provider connectors.
+ucanto supplies signing, proof representation, serialization, and proof validation. Capvine supplies this constrained permission profile, owner-policy integration, resource and task binding, server dispatch, and lifecycle persistence. The caller supplies owner authentication, runtime isolation, transport deployment, and secret-key custody. The optional [account manager](accounts.md) supplies encrypted credential persistence and OAuth/OIDC renewal for direct provider handlers.

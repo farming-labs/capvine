@@ -1,6 +1,6 @@
 # Saved workflow approvals
 
-Approve a fixed workflow once, then let trusted application code request short-lived grants from that saved rule. Each invocation still passes Capvine's existing proof and lifecycle checks. This works with any registered operation, including the optional Executor Gmail reader, filesystem reads, and PostgreSQL record reads.
+Approve a fixed workflow once, then let trusted application code request short-lived grants from that saved rule. Each invocation still passes Capvine's existing proof and lifecycle checks. This works with any registered operation, including the direct Gmail reader, filesystem reads, and PostgreSQL record reads.
 
 An approval fixes one recipient identity, one resource, one action, a finite approval expiry, and a maximum grant lifetime of 1–3600 seconds. It cannot be edited or re-enabled: use a new approval ID for a changed decision.
 
@@ -8,11 +8,11 @@ An approval fixes one recipient identity, one resource, one action, a finite app
 
 | Decision                                   | Responsible component                                    | When it happens                                                                                    |
 | ------------------------------------------ | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Connect a provider account                 | Executor's account flow                                  | Initial connection, then again if the provider requires reconnection or additional consent         |
+| Connect a provider account                 | The direct account manager                               | Initial connection, then again if the provider requires reconnection or additional consent         |
 | Allow a client to read a registered object | Your owner-facing application and Capvine administration | Once for this saved approval; again for a different scope, recipient, or expired/disabled approval |
 | Issue a grant and verify an invocation     | Trusted application backend and Capvine                  | The backend requests a grant when needed; the server verifies every call                           |
 
-Provider token renewal belongs to Executor and is distinct from renewing a Capvine grant. The provider may require consent again. The example verifies persistence of fixture credentials, not a real Google refresh-token exchange.
+Provider token renewal belongs to the account manager and is distinct from renewing a Capvine grant. The provider may require consent again. The example exercises code exchange, refresh rotation, and persistence against a local provider fixture; live Google consent/refresh still needs validation.
 
 ```mermaid
 sequenceDiagram
@@ -21,7 +21,7 @@ sequenceDiagram
   participant Capvine
   participant State as SQLite state
   participant Worker
-  participant Executor
+  participant Provider
   Owner->>Backend: Approve this workflow once
   Backend->>Capvine: approveWorkflow(fixed scope and recipient)
   Capvine->>State: Atomically save approval and active task
@@ -32,8 +32,8 @@ sequenceDiagram
     Backend-->>Worker: Provision grant and worker identity
     Worker->>Capvine: Signed invocation and proof chain
     Capvine->>State: Check task and revocation state
-    Capvine->>Executor: Read the registered message
-    Executor-->>Capvine: Bound, projected result
+    Capvine->>Provider: Read the registered message
+    Provider-->>Capvine: Bound, projected result
     Capvine-->>Worker: Result
   end
   Owner->>Backend: Disable workflow
@@ -101,4 +101,4 @@ The operator API remains broadly privileged for one configured owner. It can cre
 
 `test/approvals.test.ts` covers exact bindings, raw signed escalation requests, expiry, child invalidation, owner boundaries, storage failure, atomic creation, and issuance racing with disable. `test/service.test.ts` covers authenticated commands, field substitution, resource removal, persistence, and disable across restart.
 
-Run the [Executor demonstration](executor.md) for an actual Executor runtime, persistent Capvine service, and separate worker process. It demonstrates one approval reused after restart, credential substitution rejection, and disabling existing grants. The provider is an explicit mailbox fixture. Live Google consent/refresh, an owner approval UI, arbitrary Gmail selection, writes, and production isolation remain outside this milestone.
+Run the [direct account demonstration](accounts.md) for an OAuth/OIDC provider fixture, persistent credential and authorization stores, and a separate worker process. It demonstrates code exchange, refresh, one approval reused after restart, account identity substitution rejection, and disabling existing grants. Live Google consent/refresh, an owner approval UI, arbitrary Gmail selection, writes, and production isolation remain outside this milestone.

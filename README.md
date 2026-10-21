@@ -33,11 +33,11 @@ Implemented:
 - A validated server command combining real file and PostgreSQL reads through one permission path.
 - Registered-file and PostgreSQL-record adapters with bounded reads and protected target bindings.
 - A live read-only GitHub issue connector and a provisioned per-worker MCP bridge.
-- An optional Executor adapter and Gmail companion reader, with a real Executor integration demonstration using fixture accounts.
+- Direct OAuth/OIDC account connections, encrypted local credentials, serialized token refresh, and a bound Gmail reader.
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: a production service deployment, a Capvine OAuth client or approval UI, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. The Executor companion delegates provider account connections to Executor; real Google consent and token refresh remain unverified by the fixture test. The live GitHub example uses public data.
+Not implemented: a production service deployment, browser login/account-management or approval UI, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. Direct account connection and refresh are tested against a local OAuth/OIDC provider fixture; live Google consent and refresh remain unverified. The live GitHub example uses public data.
 
 The [resource server command](docs/server-command.md) combines both adapters. Run `npm run example:resources` for the full separate-process demonstration, including revocation and restart. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state. The [roadmap](docs/roadmap.md) and [release readiness checklist](docs/release-readiness.md) retain the remaining external review, production deployment, and publication gates.
 
@@ -54,6 +54,7 @@ npm run example
 npm run example:network -- --workers 3
 npm run example:service
 npm run example:resources
+npm run example:accounts
 ```
 
 The first example creates a permission for A, delegates it to B, reads one fixture issue, and demonstrates that revoking A's grant stops B's next call. No external account or model API key is needed.
@@ -120,7 +121,7 @@ The [integration guide](docs/integration.md) describes resource registration, gr
 
 See the [GitHub and MCP guide](docs/connectors.md), `npm run example:github`, and `npm run example:mcp` for the implemented integrations.
 
-The [Executor integration guide](docs/executor.md) covers `npm run example:executor` and a companion Gmail app. Provider account connections remain in Executor; private Gmail OAuth onboarding has not been validated by the fixture demonstration.
+The [direct account guide](docs/accounts.md) covers `npm run example:accounts`, OAuth callback integration, encrypted credential storage, refresh, and Gmail resource registration. Workers receive grants; provider credentials stay in the trusted account manager.
 
 The [saved workflow guide](docs/workflow-approvals.md) shows how to approve an exact scope once, issue fresh grants automatically from trusted application code, and disable all dependent grants. It reuses the same permission path with any registered adapter.
 

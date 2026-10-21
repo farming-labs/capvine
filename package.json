@@ -9,7 +9,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
     "example": "tsx examples/delegation.ts",
@@ -22,8 +22,8 @@
     "example:mcp": "tsx examples/mcp.ts",
     "server": "tsx src/cli.ts",
     "example:resources": "tsx examples/resources.ts",
-    "example:executor": "tsx examples/executor/demo.ts",
-    "package:check": "node scripts/check-package.mjs"
+    "package:check": "node scripts/check-package.mjs",
+    "example:accounts": "tsx examples/accounts/demo.ts"
   },
   "exports": {
     ".": {
@@ -78,9 +78,17 @@
       "types": "./dist/approvals.d.ts",
       "default": "./dist/approvals.js"
     },
-    "./executor": {
-      "types": "./dist/executor.d.ts",
-      "default": "./dist/executor.js"
+    "./accounts": {
+      "types": "./dist/accounts.d.ts",
+      "default": "./dist/accounts.js"
+    },
+    "./oauth": {
+      "types": "./dist/oauth.d.ts",
+      "default": "./dist/oauth.js"
+    },
+    "./gmail": {
+      "types": "./dist/gmail.d.ts",
+      "default": "./dist/gmail.js"
     }
   },
   "files": [
@@ -100,6 +108,7 @@
     "@ucanto/core": "10.4.5",
     "@ucanto/principal": "9.0.3",
     "@ucanto/validator": "10.0.1",
+    "oauth4webapi": "3.8.8",
     "pg": "8.23.1"
   },
   "devDependencies": {
