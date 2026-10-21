@@ -17,8 +17,16 @@ export async function assertPrivateDirectory(path: string): Promise<void> {
     );
 }
 
-export async function readPrivateFile(path: string): Promise<string> {
-  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+export async function readPrivateFile(
+  path: string,
+  maxBytes = 4096,
+): Promise<string> {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 65_536)
+    throw new Error("Invalid private file limit");
+  const file = await open(
+    path,
+    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+  );
   try {
     const info = await file.stat();
     if (
@@ -26,10 +34,10 @@ export async function readPrivateFile(path: string): Promise<string> {
       info.nlink !== 1 ||
       info.uid !== process.getuid!() ||
       (info.mode & 0o077) !== 0 ||
-      info.size > 4096
+      info.size > maxBytes
     )
       throw new Error("Invalid private file ownership, mode, type, or size");
-    const bytes = Buffer.alloc(4097);
+    const bytes = Buffer.alloc(maxBytes + 1);
     let bytesRead = 0;
     while (bytesRead < bytes.length) {
       const chunk = await file.read(
@@ -41,7 +49,7 @@ export async function readPrivateFile(path: string): Promise<string> {
       if (chunk.bytesRead === 0) break;
       bytesRead += chunk.bytesRead;
     }
-    if (bytesRead > 4096) throw new Error("Private file is too large");
+    if (bytesRead > maxBytes) throw new Error("Private file is too large");
     return bytes.subarray(0, bytesRead).toString("utf8").trim();
   } finally {
     await file.close();

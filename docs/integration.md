@@ -105,7 +105,7 @@ OS and network isolation are separate deployment responsibilities. Clients must 
 
 ## Resource and runtime adapters
 
-The [filesystem and PostgreSQL adapters](resources.md) are implemented; the [GitHub connector and per-worker MCP bridge](connectors.md) are implemented. The next milestone completes the combination of filesystem and PostgreSQL resource adapters in one configurable server, reusing the existing authority and HTTP transport. Its layers and acceptance criteria are tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3) and the [roadmap](roadmap.md#1-resource-server-with-filesystem-and-postgresql-adapters).
+The [filesystem and PostgreSQL adapters](resources.md) are implemented; the [GitHub connector and per-worker MCP bridge](connectors.md) are implemented. The [server command](server-command.md) combines filesystem and PostgreSQL resource adapters with the existing authority and HTTP transport. Its layers and acceptance criteria are tracked in [issue #3](https://github.com/farming-labs/capvine/issues/3) and the [roadmap](roadmap.md#1-resource-server-with-filesystem-and-postgresql-adapters).
 
 - **Filesystem operations:** register a bounded read of one regular text file. The adapter owns safe target resolution, file-identity semantics, and limits while reading. The initial scope does not accept caller-selected paths or directory-wide authority. Tests must address path/link escapes and replacement races within the supported deployment model.
 - **Database-backed operations:** register a defined operation such as reading one invoice. After verification, the handler queries the bound record using a restricted database connection. Database roles and row permissions can provide additional enforcement. This does not authorize arbitrary SQL or make the database understand capability proofs.
@@ -115,7 +115,7 @@ The [filesystem and PostgreSQL adapters](resources.md) are implemented; the [Git
 
 Reusing a saved read result is different from making a new request; revocation cannot erase data already returned. Approval does not replace server enforcement or deployment isolation.
 
-The PostgreSQL resource adapter protects application data. A PostgreSQL implementation of `StateStore` would instead persist Capvine's grants and lifecycle state. These are separate integrations; the first resource-server milestone can retain SQLite for permission state. The persistent service now provides protected local bootstrap and a separate authenticated loopback administration listener. A configuration-file resource server remains planned.
+The PostgreSQL resource adapter protects application data. A PostgreSQL implementation of `StateStore` would instead persist Capvine's grants and lifecycle state. These are separate integrations; the first resource-server milestone can retain SQLite for permission state. The persistent service now provides protected local bootstrap and a separate authenticated loopback administration listener. The [configuration-file resource server](server-command.md) exposes these existing service and adapter APIs.
 
 ## What scales now?
 
