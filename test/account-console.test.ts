@@ -18,13 +18,23 @@ import { startProviderFixture } from "../examples/accounts/provider-fixture.ts";
 
 async function setup(t: TestContext) {
   const socket = createServer();
+  let temporary: string | undefined;
+  let provider!: Awaited<ReturnType<typeof startProviderFixture>>;
+  let accounts!: Awaited<ReturnType<typeof openAccountManager>>;
+  let app!: Awaited<ReturnType<typeof startAccountConsole>>;
+  t.after(async () => {
+    await app?.close();
+    await accounts?.close();
+    await provider?.close();
+    await new Promise<void>((resolve) => socket.close(() => resolve()));
+    if (temporary) await rm(temporary, { recursive: true, force: true });
+  });
   await new Promise<void>((resolve) => socket.listen(0, "127.0.0.1", resolve));
   const address = socket.address();
   assert.ok(address && typeof address !== "string");
   const port = address.port;
-  await new Promise<void>((resolve) => socket.close(() => resolve()));
-  const temporary = await mkdtemp(join(tmpdir(), "capvine-console-test-"));
-  const provider = await startProviderFixture({
+  temporary = await mkdtemp(join(tmpdir(), "capvine-console-test-"));
+  provider = await startProviderFixture({
     redirectUri: `http://127.0.0.1:${port}/oauth/callback`,
   });
   const accountOptions = {
@@ -33,7 +43,7 @@ async function setup(t: TestContext) {
     providers: [provider.provider()],
   };
   const loginKey = randomBytes(32).toString("base64url");
-  let accounts = await openAccountManager(accountOptions);
+  accounts = await openAccountManager(accountOptions);
   const open = () =>
     startAccountConsole({
       accounts,
@@ -48,13 +58,8 @@ async function setup(t: TestContext) {
         },
       ],
     });
-  let app = await open();
-  t.after(async () => {
-    await app.close();
-    await accounts.close();
-    await provider.close();
-    await rm(temporary, { recursive: true, force: true });
-  });
+  await new Promise<void>((resolve) => socket.close(() => resolve()));
+  app = await open();
   function browser() {
     let cookie = "";
     let csrf = "";
@@ -62,6 +67,7 @@ async function setup(t: TestContext) {
       const response = await fetch(app.url + path, {
         ...init,
         redirect: "manual",
+        signal: AbortSignal.timeout(5000),
         headers: { cookie, ...init.headers },
       });
       const setCookie = response.headers.get("set-cookie");
