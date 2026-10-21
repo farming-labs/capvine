@@ -26,6 +26,7 @@ Implemented:
 - Exact resource, operation, task, and receiving-service restrictions.
 - Expiration, parent/child revocation, and task termination.
 - Memory and SQLite state stores, with audit outcomes.
+- Saved owner-approved workflows with short-lived grant renewal and persistent disable.
 - Serialized proof archives and a transport callback for embedding in a backend.
 - A bounded Node HTTP handler and client transport.
 - A container reference check that tests worker credential and network isolation in Linux CI.
@@ -36,7 +37,7 @@ Implemented:
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: a production service deployment, OAuth, approval UI, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. The live GitHub example uses public data; private-account onboarding remains application-owned.
+Not implemented: a production service deployment, a Capvine OAuth client or approval UI, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. The Executor companion delegates provider account connections to Executor; real Google consent and token refresh remain unverified by the fixture test. The live GitHub example uses public data.
 
 The [resource server command](docs/server-command.md) combines both adapters. Run `npm run example:resources` for the full separate-process demonstration, including revocation and restart. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state. The [roadmap](docs/roadmap.md) and [release readiness checklist](docs/release-readiness.md) retain the remaining external review, production deployment, and publication gates.
 
@@ -121,11 +122,13 @@ See the [GitHub and MCP guide](docs/connectors.md), `npm run example:github`, an
 
 The [Executor integration guide](docs/executor.md) covers `npm run example:executor` and a companion Gmail app. Provider account connections remain in Executor; private Gmail OAuth onboarding has not been validated by the fixture demonstration.
 
+The [saved workflow guide](docs/workflow-approvals.md) shows how to approve an exact scope once, issue fresh grants automatically from trusted application code, and disable all dependent grants. It reuses the same permission path with any registered adapter.
+
 ## Persist state
 
 The [persistent service guide](docs/service.md) shows one-time identity/state initialization, authenticated grant issuance, and restart behavior. The operator token belongs only in protected application code; workers receive their own signing identities and scoped grants.
 
-Use `SqliteStore` from the `./sqlite` entry in place of `MemoryStore`. It stores resources, tasks, issued root grants, revocations, and audit outcomes. Preserve the service identity across restarts through your existing secret store. The database contains no signing keys or provider credentials.
+Use `SqliteStore` from the `./sqlite` entry in place of `MemoryStore`. It stores resources, tasks, workflow approvals, issued root grants, revocations, and audit outcomes. Preserve the service identity across restarts through your existing secret store. The database contains no signing keys or provider credentials.
 
 Store administration is privileged application code:
 

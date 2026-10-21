@@ -18,6 +18,10 @@ import {
   RequestError,
 } from "./http-internal.ts";
 import type { createAuthority } from "./server.ts";
+import type {
+  createWorkflowApprovals,
+  WorkflowApprovalInput,
+} from "./approvals.ts";
 
 function fields(value: unknown, required: string[]): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -37,6 +41,32 @@ function string(value: unknown): string {
   return value;
 }
 
+function recipient(value: unknown): Principal {
+  try {
+    return ed25519.Verifier.parse(string(value) as `did:key:${string}`);
+  } catch {
+    throw new RequestError(400, "Invalid recipient");
+  }
+}
+
+async function grantResponse(grant: Grant): Promise<Json> {
+  return {
+    grant: Buffer.from(await encodeGrant(grant)).toString("base64"),
+    id: grant.cid.toString(),
+  };
+}
+
+function parseGrantResponse(value: Json): Promise<Grant> {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    typeof value.grant !== "string"
+  )
+    throw new Error("Invalid grant response");
+  return decodeGrant(Buffer.from(value.grant, "base64"));
+}
+
 export function validateAdminToken(token: string): void {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token))
     throw new Error(
@@ -50,6 +80,7 @@ export function createAdministrationHandler(options: {
   owner: string;
   token: string;
   audit: () => AuditEvent[];
+  approvals?: ReturnType<typeof createWorkflowApprovals>;
 }): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   validateAdminToken(options.token);
   const expected = createHash("sha256")
@@ -122,26 +153,57 @@ export function createAdministrationHandler(options: {
             expiresAt.getTime() > Date.now() + 3_600_000
           )
             throw new RequestError(400, "Invalid grant lifetime");
-          let audience: Principal;
-          try {
-            audience = ed25519.Verifier.parse(
-              string(p.audience) as `did:key:${string}`,
-            );
-          } catch {
-            throw new RequestError(400, "Invalid recipient");
-          }
           const grant = await options.authority.issue({
             actor: options.owner,
-            audience,
+            audience: recipient(p.audience),
             taskId: string(p.taskId),
             resource: string(p.resource) as ResourceId,
             action: string(p.action),
             expiresAt,
           });
+          result = await grantResponse(grant);
+          break;
+        }
+        case "approval.create": {
+          if (!options.approvals)
+            throw new RequestError(400, "Approvals are unavailable");
+          const p = fields(command.params, [
+            "id",
+            "audience",
+            "resource",
+            "action",
+            "expiresAt",
+            "maxGrantSeconds",
+          ]);
+          if (typeof p.maxGrantSeconds !== "number")
+            throw new RequestError(400, "Invalid grant lifetime");
           result = {
-            grant: Buffer.from(await encodeGrant(grant)).toString("base64"),
-            id: grant.cid.toString(),
+            ...options.approvals.approve({
+              id: string(p.id),
+              audience: recipient(p.audience),
+              resource: string(p.resource) as ResourceId,
+              action: string(p.action),
+              expiresAt: new Date(string(p.expiresAt)),
+              maxGrantSeconds: p.maxGrantSeconds,
+            }),
           };
+          break;
+        }
+        case "approval.issue":
+        case "approval.read":
+        case "approval.disable": {
+          if (!options.approvals)
+            throw new RequestError(400, "Approvals are unavailable");
+          const p = fields(command.params, ["id"]);
+          const id = string(p.id);
+          if (command.method === "approval.issue")
+            result = await grantResponse(await options.approvals.issue(id));
+          else if (command.method === "approval.read")
+            result = options.approvals.read(id);
+          else {
+            options.approvals.disable(id);
+            result = { disabled: true };
+          }
           break;
         }
         case "grant.revoke": {
@@ -245,15 +307,22 @@ export function createAdministrationClient(options: {
         action: input.action,
         expiresAt: input.expiresAt.toISOString(),
       });
-      if (
-        !value ||
-        typeof value !== "object" ||
-        Array.isArray(value) ||
-        typeof value.grant !== "string"
-      )
-        throw new Error("Invalid grant response");
-      return decodeGrant(Buffer.from(value.grant, "base64"));
+      return parseGrantResponse(value);
     },
+    approveWorkflow: (input: WorkflowApprovalInput) =>
+      call("approval.create", {
+        id: input.id,
+        audience: input.audience.did(),
+        resource: input.resource,
+        action: input.action,
+        expiresAt: input.expiresAt.toISOString(),
+        maxGrantSeconds: input.maxGrantSeconds,
+      }),
+    async issueApproved(id: string): Promise<Grant> {
+      return parseGrantResponse(await call("approval.issue", { id }));
+    },
+    readApproval: (id: string) => call("approval.read", { id }),
+    disableApproval: (id: string) => call("approval.disable", { id }),
     revoke: (id: string) => call("grant.revoke", { id }),
     endTask: (id: string) => call("task.end", { id }),
     audit: () => call("audit.read", {}),

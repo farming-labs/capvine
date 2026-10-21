@@ -128,6 +128,103 @@ test("authenticated administration and child revocation survive an authority res
   assert.ok(!JSON.stringify(audit).includes(f.token));
 });
 
+test("saved workflow approvals renew across restart and disable every dependent grant", async (t) => {
+  const f = await setup(t);
+  const approved = {
+    id: "daily-read",
+    audience: f.worker,
+    resource: resource.id,
+    action: "record/read",
+    expiresAt: new Date(Date.now() + 86_400_000),
+    maxGrantSeconds: 600,
+  };
+  await f.admin().approveWorkflow(approved);
+  const first = await f.admin().issueApproved(approved.id);
+  assert.equal(await f.client().invoke(first), "fixed");
+  await f.restart();
+  const next = await f.admin().issueApproved(approved.id);
+  assert.equal(await f.client().invoke(next), "fixed");
+  assert.equal(await f.client().invoke(first), "fixed");
+  assert.notEqual(first.cid.toString(), next.cid.toString());
+  const childSigner = await identity.generate();
+  const child = await f.client().delegate({
+    grant: next,
+    audience: childSigner,
+    expiresAt: new Date(Date.now() + 60_000),
+  });
+  await f.admin().disableApproval(approved.id);
+  await f.restart();
+  await assert.rejects(f.admin().issueApproved(approved.id), /403/);
+  for (const grant of [first, next])
+    await assert.rejects(f.client().invoke(grant), PermissionDenied);
+  const request = await invoke({
+    issuer: childSigner,
+    audience: f.service().principal,
+    capability: child.capabilities[0]!,
+    proofs: [child],
+    expiration: child.expiration,
+  }).delegate();
+  await assert.rejects(
+    createHttpTransport({ url: f.service().url })(await encodeGrant(request)),
+    PermissionDenied,
+  );
+  const approval = await f.admin().readApproval(approved.id);
+  assert.ok(approval && typeof approval === "object" && "active" in approval);
+  assert.equal(approval.active, false);
+  await assert.rejects(f.admin().approveWorkflow(approved), /500/);
+  assert.equal(f.calls(), 3);
+});
+
+test("approval commands require operator authentication and cannot override saved bindings", async (t) => {
+  const f = await setup(t);
+  await f.admin().approveWorkflow({
+    id: "fixed",
+    audience: f.worker,
+    resource: resource.id,
+    action: "record/read",
+    expiresAt: new Date(Date.now() + 60_000),
+    maxGrantSeconds: 60,
+  });
+  async function command(
+    params: unknown,
+    token = f.token,
+    url = f.service().administrationUrl,
+  ) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ method: "approval.issue", params }),
+    });
+    await response.body?.cancel();
+    return response.status;
+  }
+  assert.equal(await command({ id: "fixed" }, "wrong"), 401);
+  assert.equal(
+    await command(
+      { id: "fixed" },
+      f.token,
+      new URL("/admin", f.service().url).href,
+    ),
+    404,
+  );
+  for (const field of [
+    "audience",
+    "resource",
+    "action",
+    "expiresAt",
+    "ownerId",
+    "taskId",
+  ])
+    assert.equal(await command({ id: "fixed", [field]: "replacement" }), 400);
+  assert.equal(await command({ id: "unknown" }), 403);
+  await f.restart([]);
+  await assert.rejects(f.admin().issueApproved("fixed"), /403/);
+  assert.equal(f.calls(), 0);
+});
+
 test("request fields cannot impersonate the owner or access administration on the invocation port", async (t) => {
   const f = await setup(t);
   async function command(body: unknown, token = f.token, origin?: string) {

@@ -10,7 +10,7 @@ Tests pin the decoded wire version, capability fields, and archive identity. A d
 
 Before the first published preview, review the API with application developers and choose a version in a dedicated release PR. For subsequent 0.x previews, retain exact-version pins in integration examples; breaking API, schema, or wire changes require a new minor line and migration notes, while compatible fixes use patches. A future 1.0 release requires an explicit stable-support commitment. No currently published compatibility guarantee is implied by this proposed release policy.
 
-Public entries cover the core verifier/client, SQLite, HTTP, identity files, authenticated administration, persistent service, adapter composition, filesystem, PostgreSQL, GitHub, MCP, and configuration. The CLI is `capvine`. The adapter entries are Node server integrations; the package does not promise browser or edge-runtime compatibility. Review declaration dependencies and the built artifact, not just source imports.
+Public entries cover the core verifier/client, SQLite, HTTP, identity files, authenticated administration, persistent service, saved workflow approvals, adapter composition, filesystem, PostgreSQL, GitHub, Executor, MCP, and configuration. The CLI is `capvine`. The adapter entries are Node server integrations; the package does not promise browser or edge-runtime compatibility. Review declaration dependencies and the built artifact, not just source imports.
 
 ## Evidence available
 

@@ -74,6 +74,10 @@
       "types": "./dist/configuration.d.ts",
       "default": "./dist/configuration.js"
     },
+    "./approvals": {
+      "types": "./dist/approvals.d.ts",
+      "default": "./dist/approvals.js"
+    },
     "./executor": {
       "types": "./dist/executor.d.ts",
       "default": "./dist/executor.js"

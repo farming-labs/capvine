@@ -15,7 +15,7 @@ CAPVINE_EXECUTOR_BIN=/tmp/capvine-executor-runtime/node_modules/.bin/executor np
 
 Node.js 24+ and a supported Executor platform are required. The example starts its own temporary Executor instance and credentialed mailbox fixture, deploys the companion reader, and saves an account through Executor's account-connection API. The actual Executor runtime performs the HTTP provider read. The fixture is not Gmail and does not exercise Google OAuth consent or refresh.
 
-The example checks successful reads, persisted accounts after Executor restart, account relinking, replacement credentials under the same account ID, and Capvine revocation. Both substitutions must fail before a message request reaches the fixture provider. It removes its own temporary data and stops its processes when finished. CI runs this scenario against the real pinned executable.
+The example provisions a separate worker with a delegated grant, saves a workflow approval, restarts both services, and issues a new grant without another approval. It checks persisted accounts, account relinking, replacement credentials under the same account ID, and disabling existing roots and child grants across restart. Both substitutions must fail before a message request reaches the fixture provider. It removes its own temporary data and stops its processes when finished. CI runs this scenario against the real pinned executable.
 
 ## Connect a real Gmail account
 
@@ -47,7 +47,9 @@ const adapter = await createExecutorGmailAdapter({
 });
 ```
 
-The secret store, authenticated owner, and selection variables above are application-owned values. Supply the adapter to `startResourceServer`; the existing grant API uses action `gmail/message.read`. Workers invoke the resulting grant normally. The adapter keeps an immutable copy of each registration and rejects replacement bindings. Multiple mailbox accounts need separately configured adapters/apps because Executor resolves account links for each app.
+The secret store, authenticated owner, and selection variables above are application-owned values. Supply the adapter to `startResourceServer`; the existing grant API uses action `gmail/message.read`. Workers invoke the resulting grant normally. The adapter keeps an immutable copy of each registration and rejects replacement bindings. Executor resolves account links for each app. For multiple mailbox accounts, use separate apps and Capvine server instances, or implement a trusted dispatcher over separately bound connections. Registering two adapters with the same action in one server is currently rejected.
+
+Use the [saved workflow API](workflow-approvals.md) to authorize this resource once and issue short-lived grants from trusted application code. The account connection in Executor and the saved permission in Capvine are separate records. Workers never need either service's administrative credential.
 
 ## Enforcement and limitations
 

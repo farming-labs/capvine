@@ -1,17 +1,29 @@
-import type {
-  AuditEvent,
-  GrantRecord,
-  Resource,
-  StateStore,
-  Task,
-} from "./types.ts";
+import type { AuditEvent, GrantRecord, Resource, Task } from "./types.ts";
+import type { ApprovalStore, WorkflowApproval } from "./approvals.ts";
 
-export class MemoryStore implements StateStore {
+export class MemoryStore implements ApprovalStore {
+  #approvals = new Map<string, WorkflowApproval>();
   #resources = new Map<string, Resource>();
   #tasks = new Map<string, Task>();
   #grants = new Map<string, GrantRecord>();
   #revocations = new Set<string>();
   #events: AuditEvent[] = [];
+
+  addApproval(approval: WorkflowApproval): void {
+    if (this.#approvals.has(approval.id) || this.#tasks.has(approval.taskId))
+      throw new Error("Approval or task already exists");
+    const record = structuredClone(approval);
+    this.#approvals.set(record.id, record);
+    this.#tasks.set(record.taskId, {
+      id: record.taskId,
+      ownerId: record.ownerId,
+      active: true,
+    });
+  }
+
+  getApproval(id: string): WorkflowApproval | undefined {
+    return structuredClone(this.#approvals.get(id));
+  }
 
   addResource(resource: Resource): void {
     if (this.#resources.has(resource.id))
