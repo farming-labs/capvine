@@ -29,7 +29,7 @@ async function relation(
   table: string,
 ): Promise<string> {
   const result = await client.query(
-    "SELECT c.oid::text AS oid, c.relkind, c.relowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user) AS owned, pg_catalog.has_table_privilege(c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,TRIGGER') AS writable FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = $1 AND c.relname = $2",
+    "SELECT c.oid::text AS oid, c.relkind, c.relowner = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user) AS owned, (pg_catalog.has_table_privilege(c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,TRIGGER') OR pg_catalog.has_any_column_privilege(c.oid, 'INSERT,UPDATE')) AS writable FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = $1 AND c.relname = $2",
     [schema, table],
   );
   const row = result.rows[0];

@@ -144,6 +144,16 @@ test("PostgreSQL adapter uses a real restricted database and exact record, tenan
     "REVOKE UPDATE ON app.records FROM fixture_reader",
   );
   await database.admin.query(
+    "GRANT UPDATE (title) ON app.records TO fixture_reader",
+  );
+  await assert.rejects(
+    adapter.operations[0]!.execute(resource),
+    /read-only privileges/,
+  );
+  await database.admin.query(
+    "REVOKE UPDATE (title) ON app.records FROM fixture_reader",
+  );
+  await database.admin.query(
     "UPDATE capvine.database_identity SET id = 'replaced-database'",
   );
   await assert.rejects(
