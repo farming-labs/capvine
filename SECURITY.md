@@ -23,7 +23,7 @@ The repository tests explicit negative cases: changed resources, operations, tas
 
 ## Current limitations
 
-- Both examples use simulated provider data. The network example has real HTTP and separate processes but runs under one OS user; it does not demonstrate hostile-code containment.
+- The delegation and network examples use simulated provider data; the optional GitHub example reads a real public issue. The network example has real HTTP and separate processes but runs under one OS user; it does not demonstrate hostile-code containment.
 - Network-demo administration uses private parent-process IPC. The persistent service adds separate loopback administration authenticated by a random operator token, bound to one configured owner. There is no browser login, multi-tenant administration, or production credential store. See [service deployment constraints](docs/service.md).
 - The HTTP handler rejects requests with an Origin header; it is intended for server runtimes, not browser sessions. This header check is not client authentication: signatures and proof validation authenticate invocations.
 - The HTTP handler admits at most 16 requests concurrently per handler instance. Request-body reading times out after five seconds, but handlers need their own execution deadlines. Client disconnects/timeouts do not cancel an already dispatched operation. There are no automatic retries.
@@ -32,6 +32,7 @@ The repository tests explicit negative cases: changed resources, operations, tas
 - Revocation stops subsequent authorization. It does not cancel in-flight operations or erase returned data.
 - A permitted read can still disclose sensitive information to its recipient. Capvine does not enforce information-flow restrictions on returned data.
 - A valid capability does not make model output correct, remove prompt injection, or protect an unrestricted browser, shell, operating system, or network path.
+- The MCP bridge trusts launcher provisioning and serves one worker/task per instance. It provides no public HTTP session authentication; anyone controlling its channel can use its assigned grants.
 - Shared client identities do not provide per-client isolation. The application must keep client keys and task bindings separate.
 - Offline child delegations are not exhaustively indexed. Root grants and authorization outcomes are persisted; a comprehensive grant explorer is future work.
 - SQLite storage and audit logs are trusted local state, not encrypted or tamper-evident storage.

@@ -27,8 +27,8 @@ These prerequisites remain visible independently of the adapter work:
 
 - [x] Persistent authority identity and authenticated single-owner operator administration ([issue #5](https://github.com/farming-labs/capvine/issues/5)); verified by `test/service.test.ts` and `npm run example:service`.
 - [x] Transactional state schema versioning, service/owner binding, restart checks, and bounded audit inspection.
-- [ ] Live read-only GitHub connector with actual provider target validation.
-- [ ] MCP integration bound to a provisioned worker identity, task, and grants.
+- [x] Live read-only GitHub connector with actual provider target validation; `test/github.test.ts` and `npm run example:github`.
+- [x] MCP integration bound to a provisioned worker identity, task, and grants; `test/mcp.test.ts` and `npm run example:mcp`.
 - [ ] Deployment checks that establish credential and network isolation from untrusted workers.
 - [ ] API review with adopters and a supported release/version policy.
 - [ ] Independent security review and explicit publication approval.
@@ -67,7 +67,7 @@ Deliver the layers in focused PRs, with detailed work items in [issue #3](https:
 
 ## 2. External-service connectors and application integrations
 
-Extend the resource server with a live read-only external API connector, initially the existing GitHub issue example. Select the connection and stable provider object identity through trusted administration. Validate the actual target where API routes use mutable names and keep upstream credentials narrowly scoped.
+The [GitHub connector and provisioned MCP bridge](connectors.md) are implemented. The live smoke example uses public data, and the MCP example launches a separate stdio worker. Private-provider account onboarding and remote multi-tenant MCP authentication remain open. Select the connection and stable provider object identity through trusted administration. Validate the actual target where API routes use mutable names and keep upstream credentials narrowly scoped.
 
 Integrate with application workflows and background jobs, then extract reusable runtime adapters from demonstrated lifecycle needs. Existing roles or ACLs may inform grant issuance. Optional agent-tool and MCP adapters use the same verifier rather than creating another permission path.
 

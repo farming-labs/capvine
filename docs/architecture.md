@@ -60,7 +60,7 @@ The current recipient signs a child grant containing its parent as proof. The SD
 
 Delegation is local to the worker and does not require another owner interaction. Child grants need not be pre-registered in the database. Their proofs travel with the invocation. The store records root grants; it does not claim to enumerate every child grant created offline.
 
-The application remains responsible for provisioning clients and handing each grant to the correct identity. An optional MCP adapter will need authenticated worker/task bindings. Multiple workers using the same MCP identity cannot be reliably distinguished from model-supplied names alone.
+The application remains responsible for provisioning clients and handing each grant to the correct identity. The MCP bridge binds one provisioned worker identity, task, service, and set of grants per server instance. Multiple workers using the same MCP identity cannot be reliably distinguished from model-supplied names alone.
 
 ## Invocation
 
