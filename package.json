@@ -61,6 +61,10 @@
     "./filesystem": {
       "types": "./dist/filesystem.d.ts",
       "default": "./dist/filesystem.js"
+    },
+    "./postgres": {
+      "types": "./dist/postgres.d.ts",
+      "default": "./dist/postgres.js"
     }
   },
   "files": [
@@ -75,10 +79,12 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
+    "@types/pg": "8.23.1",
     "@ucanto/client": "9.0.2",
     "@ucanto/core": "10.4.5",
     "@ucanto/principal": "9.0.3",
-    "@ucanto/validator": "10.0.1"
+    "@ucanto/validator": "10.0.1",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

@@ -18,6 +18,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: sudo apt-get update && sudo apt-get install -y postgresql
       - run: npm run check
       - run: npm run example
       - run: npm run example:service
