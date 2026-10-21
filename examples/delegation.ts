@@ -13,11 +13,11 @@ const store = new MemoryStore();
 
 store.addResource({
   id: "urn:capvine:resource:issue42",
-  ownerId: "simon",
+  ownerId: "demo-owner",
   kind: "github.issue",
-  target: { connectionId: "github-simon", issueNodeId: "fixture-issue-42" },
+  target: { connectionId: "demo-github", issueNodeId: "fixture-issue-42" },
 });
-store.addTask({ id: "summarize-42", ownerId: "simon", active: true });
+store.addTask({ id: "summarize-42", ownerId: "demo-owner", active: true });
 
 const authority = createAuthority({
   signer: service,
@@ -37,7 +37,7 @@ authority.registerOperation({
 });
 
 const parent = await authority.issue({
-  actor: "simon",
+  actor: "demo-owner",
   audience: coordinator,
   taskId: "summarize-42",
   resource: "urn:capvine:resource:issue42",

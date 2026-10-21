@@ -22,11 +22,11 @@ test("restart preserves resources, task state, grants, audit, and parent revocat
     store = new SqliteStore(path);
     store.addResource({
       id: "urn:capvine:resource:42",
-      ownerId: "simon",
+      ownerId: "demo-owner",
       kind: "issue",
       target: { issue: "42" },
     });
-    store.addTask({ id: "task", ownerId: "simon", active: true });
+    store.addTask({ id: "task", ownerId: "demo-owner", active: true });
     let calls = 0;
     const createServer = (state: SqliteStore) => {
       const authority = createAuthority({
@@ -46,7 +46,7 @@ test("restart preserves resources, task state, grants, audit, and parent revocat
     };
     let server = createServer(store);
     const parent = await server.issue({
-      actor: "simon",
+      actor: "demo-owner",
       audience: a,
       taskId: "task",
       resource: "urn:capvine:resource:42",

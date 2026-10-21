@@ -1,8 +1,8 @@
 # Capvine
 
-**Delegated, resource-bound permissions for agent tools.**
+**Delegated, resource-bound authorization for applications and services.**
 
-Capvine is an experimental TypeScript library from [Farming Labs](https://github.com/farming-labs). Give a worker permission to perform one operation on one resource, let it delegate that permission with a shorter lifetime, and verify every invocation before calling your existing connector.
+Capvine is an experimental TypeScript library from [Farming Labs](https://github.com/farming-labs). Grant a client permission to perform one operation on one resource, allow delegation with a shorter lifetime, and verify every invocation before dispatching to an application handler. Clients can be backend services, background workers, applications, or agent runtimes.
 
 ```text
 Owner policy → grant for A → narrower grant for B
@@ -11,10 +11,10 @@ Owner policy → grant for A → narrower grant for B
                                          ↓
                      Capvine verification + lifecycle checks
                                          ↓
-                            your existing tool handler
+                           application resource handler
 ```
 
-Capvine builds on [ucanto](https://github.com/storacha/ucanto). It does not implement its own cryptography, replace your agent runtime, or authenticate directly to GitHub, Gmail, or Slack.
+Capvine builds on [ucanto](https://github.com/storacha/ucanto). Applications supply owner authentication, issuance policy, resource handlers, and upstream credentials. Existing roles or ACLs can inform issuance policy. The library does not replace database permissions or provide native database authorization; the current examples use simulated issue APIs.
 
 ## Status
 
@@ -27,9 +27,10 @@ Implemented:
 - Expiration, parent/child revocation, and task termination.
 - Memory and SQLite state stores, with audit outcomes.
 - Serialized proof archives and a transport callback for embedding in a backend.
-- An offline issue-reading example and tests that bypass the client to attack server enforcement.
+- A bounded Node HTTP handler and client transport.
+- In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: an HTTP service, MCP adapter, live GitHub connector, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. The GitHub example uses fixture data.
+Not implemented: a production service deployment, authenticated owner administration API, MCP adapter, live GitHub connector, OAuth, approval UI, worker isolation, write-operation replay protection, budgets, or a managed service. Provider data in both examples is simulated.
 
 ## Run the example
 
@@ -41,9 +42,12 @@ cd capvine
 npm ci
 npm run check
 npm run example
+npm run example:network -- --workers 3
 ```
 
-The example creates a permission for Agent A, delegates it to Agent B, reads one fixture issue, revokes A's grant, and demonstrates that B's next call fails. No external account or model API key is needed.
+The first example creates a permission for A, delegates it to B, reads one fixture issue, and demonstrates that revoking A's grant stops B's next call. No external account or model API key is needed.
+
+The [network example](examples/network/README.md) runs an authority, coordinator, and three workers in separate processes. Each worker reads only its assigned issue over HTTP. Changing the issue, action, or task fails. Revoking one root leaves independent grants working; ending the task disables all of them. Try `--workers 8` to increase fan-out. This is a correctness demonstration, not a capacity benchmark or OS sandbox.
 
 ## The developer integration
 
@@ -99,7 +103,9 @@ const b = createClient({
 const result = await b.invoke(child);
 ```
 
-`transport` sends serialized invocation bytes to `authority.execute` in your backend. The demo calls it in process to show the flow; that arrangement does not isolate arbitrary agent code from server secrets. Deploy them separately when the worker runs untrusted code.
+`transport` sends serialized invocation bytes to `authority.execute` in your backend. Use `createHttpTransport` and `createHttpHandler` from the `./http` entry to cross a process boundary, as in the network example. Separate processes under the same OS user are not an isolation boundary for arbitrary untrusted code; deployment must restrict access to authority state, keys, and alternate credential paths.
+
+The [integration guide](docs/integration.md) describes resource registration, grant issuance, service integration, and worker delegation. It separates the implemented HTTP boundary from proposed database and runtime adapters.
 
 ## Persist state
 
@@ -112,13 +118,13 @@ store.revoke(parent.cid.toString());
 store.endTask("summarize-42");
 ```
 
-Authenticate and authorize the human calling any endpoint you put around those methods. The same requirement applies to resource registration and grant issuance. A string called `actor` is not authentication.
+Authenticate and authorize the caller of any endpoint exposing those methods. The same requirement applies to resource registration and grant issuance. A string called `actor` is not authentication.
 
 ## Scope
 
 The prototype supports exact, repeatable reads without caller-controlled operation arguments. Passing a grant to another worker requires that worker's own identity key to invoke it. Workers sharing keys or a broad alternative credential do not gain isolation from this library.
 
-Revocation affects subsequent authorization decisions; it does not cancel an action already dispatched. Read results can still be disclosed by an agent. The SDK does not sandbox the operating system, prevent all prompt injection, or make an allowed action inherently desirable.
+Revocation affects subsequent authorization decisions; it does not cancel an action already dispatched. A recipient can still disclose returned data. The SDK does not sandbox the operating system or guarantee that a permitted operation is appropriate for the application's purpose.
 
 Read the [architecture](docs/architecture.md), [security model](SECURITY.md), and [roadmap](docs/roadmap.md) before integrating it.
 

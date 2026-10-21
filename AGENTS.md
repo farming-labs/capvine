@@ -1,6 +1,6 @@
 # Capvine
 
-Capvine is an experimental TypeScript library for delegated, resource-bound agent permissions.
+Capvine is an experimental TypeScript library for delegated, resource-bound authorization for applications and services.
 
 - Keep capability semantics in `src/profile.ts`; do not invent cryptography.
 - Enforce authorization in the server even when client-side helpers perform the same checks.
@@ -12,6 +12,7 @@ Capvine is an experimental TypeScript library for delegated, resource-bound agen
 - Keep claims in README and SECURITY.md aligned with implemented and tested behavior.
 - Keep the prototype package private until release readiness and publishing have been explicitly addressed.
 - Do not put real credentials, personal account data, or signing keys into fixtures or commits.
+- Use neutral fixture identities and standalone technical language in documentation, examples, issues, and commit messages. Do not include personal deployment details or conversation history.
 - Run `npm run check` and `npm run example` before handing off changes.
 
-Use Node.js 24 or later. Changes belong in this standalone repository, not assistant-ui.
+Use Node.js 24 or later.

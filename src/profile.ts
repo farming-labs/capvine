@@ -86,9 +86,13 @@ export async function encodeGrant(grant: Grant): Promise<Uint8Array> {
 export async function decodeGrant(bytes: Uint8Array): Promise<Grant> {
   if (bytes.byteLength > 65_536)
     throw new PermissionDenied("Proof archive is too large");
-  const result = await Delegation.extract(bytes);
-  if (result.error) throw new PermissionDenied("Invalid proof archive");
-  return result.ok;
+  try {
+    const result = await Delegation.extract(bytes);
+    if (result.error) throw new PermissionDenied("Invalid proof archive");
+    return result.ok;
+  } catch {
+    throw new PermissionDenied("Invalid proof archive");
+  }
 }
 
 export function asInvocation(

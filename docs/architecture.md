@@ -21,7 +21,9 @@ flowchart TB
   Connector --> Provider[External service]
 ```
 
-An LLM does not sign requests itself. The runtime or a scoped sidecar holds each worker's key. The authority signing key, state store, policy code, connector credentials, and operation implementations stay outside the worker's control. A single process demonstrating all roles is convenient for development but is not a sandbox.
+A client application, worker runtime, or scoped sidecar holds the recipient's signing key. In an agent integration, model output requests an operation; trusted runtime code signs the invocation. The authority signing key, state store, policy code, connector credentials, and operation implementations stay outside the client's control. Neither an in-process example nor separate processes under one OS user provide a sandbox for hostile code. See the [network example](../examples/network/README.md) for real HTTP dispatch and the [integration guide](integration.md) for application wiring.
+
+The `task` field is a lifecycle context, not an agent-specific requirement. Applications can use it for jobs or workflows while preserving the current profile's exact restrictions. Roles or ACLs may inform the issuance policy; Capvine verifies the resulting grant before resource dispatch. Database-native authorization and provider authentication remain separate integration concerns.
 
 ## Capability profile
 
@@ -58,14 +60,14 @@ The current recipient signs a child grant containing its parent as proof. The SD
 
 Delegation is local to the worker and does not require another owner interaction. Child grants need not be pre-registered in the database. Their proofs travel with the invocation. The store records root grants; it does not claim to enumerate every child grant created offline.
 
-The agent runtime remains responsible for spawning workers and handing the correct grant to the correct identity. An MCP adapter will need authenticated worker/task bindings. Multiple workers using the same MCP identity cannot be reliably distinguished from model-supplied names alone.
+The application remains responsible for provisioning clients and handing each grant to the correct identity. An optional MCP adapter will need authenticated worker/task bindings. Multiple workers using the same MCP identity cannot be reliably distinguished from model-supplied names alone.
 
 ## Invocation
 
 1. The client signs an invocation to the service, embedding its grant chain and a short invocation lifetime.
 2. The transport sends an archive of bytes. The authority decodes it; `decodeGrant` alone does not authenticate a grant.
 3. Preflight rejects unsupported profiles, missing proofs, expiry expansion, a wrong receiving service, and unknown root grants.
-4. ucanto checks signatures, proof-recipient alignment, temporal validity, and our capability derivation rules. Only the configured service can originate accepted root authority.
+4. ucanto checks signatures, proof-recipient alignment, temporal validity, and the capability profile's derivation rules. Only the configured service can originate accepted root authority.
 5. The authorization callback checks revocations on the validated path. The dispatcher checks current task state, resource ownership, operation kind, and revocations again before dispatch.
 6. The dispatcher writes an authorization audit event and calls the registered handler with the resource binding from server storage.
 
@@ -80,6 +82,16 @@ The SQLite store uses an append-only resource/root-grant registry, task records 
 Revoking any known grant CID invalidates invocations whose chain depends on that grant. Revoking a parent does not require discovering all its descendants. Another independent grant remains independently usable.
 
 Task termination disables all grants bound to that task. Neither operation can undo work already dispatched. Restore state and the same authority identity together after a restart. A fresh empty store will reject old root grants.
+
+## HTTP transport
+
+The Node `./http` entry exports `createHttpHandler`, `createHttpTransport`, and `HttpTransportError`. Mount the handler on a protected service; it accepts only `POST /invoke` with `application/vnd.ipld.car`. It serves no issuance, registration, revocation, or other administration routes. Pass `authority.execute` as its executor.
+
+Requests are bounded to 64 KiB and tool result payloads to 1 MiB. The handler limits admitted concurrency to 16 and returns `429` when full. It rejects browser Origin headers, bounds body-read time, and returns generic errors instead of internal exception details. An authorization failure maps to `403` and then `PermissionDenied` on the client.
+
+The client requires HTTPS except on loopback, refuses redirects, bounds response reading, and has a default ten-second request timeout. It does not retry. A timeout is not proof that the handler did not run. TLS termination, host/network isolation, per-principal rate limits, execution cancellation/deadlines, and owner authentication remain deployment responsibilities.
+
+The demo keeps its control channel private to the supervisor and authority through parent-process IPC. Its authority identity and SQLite database are temporary. A persistent service needs durable identity/state and a separately authenticated administration surface. The synchronous SQLite adapter is a single-server design, not coordinated multi-replica state.
 
 ## Existing components and Capvine code
 
