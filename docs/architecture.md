@@ -77,7 +77,7 @@ The handler should use only the connection and target derived from that verified
 
 ## Persistence and revocation
 
-The SQLite store uses an append-only resource/root-grant registry, task records whose active state can be ended, a revocation set, and audit records. It is a small single-server adapter with no schema migration or multi-region coordination layer yet.
+The SQLite store uses an append-only resource/root-grant registry, task records whose active state can be ended, a revocation set, and audit records. It validates schema versions and transactionally migrates the supported legacy layout. It remains a single-server adapter without multi-region coordination.
 
 Revoking any known grant CID invalidates invocations whose chain depends on that grant. Revoking a parent does not require discovering all its descendants. Another independent grant remains independently usable.
 

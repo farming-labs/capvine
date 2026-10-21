@@ -32,6 +32,7 @@ Implemented:
 - A validated server command combining real file and PostgreSQL reads through one permission path.
 - Registered-file and PostgreSQL-record adapters with bounded reads and protected target bindings.
 - A live read-only GitHub issue connector and a provisioned per-worker MCP bridge.
+- An optional Executor adapter and Gmail companion reader, with a real Executor integration demonstration using fixture accounts.
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
@@ -117,6 +118,8 @@ const result = await b.invoke(child);
 The [integration guide](docs/integration.md) describes resource registration, grant issuance, service integration, and worker delegation. It separates the implemented HTTP boundary from proposed database and runtime adapters.
 
 See the [GitHub and MCP guide](docs/connectors.md), `npm run example:github`, and `npm run example:mcp` for the implemented integrations.
+
+The [Executor integration guide](docs/executor.md) covers `npm run example:executor` and a companion Gmail app. Provider account connections remain in Executor; private Gmail OAuth onboarding has not been validated by the fixture demonstration.
 
 ## Persist state
 

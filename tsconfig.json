@@ -10,5 +10,6 @@
     "rewriteRelativeImportExtensions": true,
     "types": ["node"]
   },
-  "include": ["src", "test", "examples"]
+  "include": ["src", "test", "examples"],
+  "exclude": ["examples/executor/app/index.ts"]
 }

@@ -22,6 +22,7 @@
     "example:mcp": "tsx examples/mcp.ts",
     "server": "tsx src/cli.ts",
     "example:resources": "tsx examples/resources.ts",
+    "example:executor": "tsx examples/executor/demo.ts",
     "package:check": "node scripts/check-package.mjs"
   },
   "exports": {
@@ -72,6 +73,10 @@
     "./configuration": {
       "types": "./dist/configuration.d.ts",
       "default": "./dist/configuration.js"
+    },
+    "./executor": {
+      "types": "./dist/executor.d.ts",
+      "default": "./dist/executor.js"
     }
   },
   "files": [
