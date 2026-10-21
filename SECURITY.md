@@ -28,6 +28,7 @@ The repository tests explicit negative cases: changed resources, operations, tas
 - The HTTP handler rejects requests with an Origin header; it is intended for server runtimes, not browser sessions. This header check is not client authentication: signatures and proof validation authenticate invocations.
 - The HTTP handler admits at most 16 requests concurrently per handler instance. Request-body reading times out after five seconds, but handlers need their own execution deadlines. Client disconnects/timeouts do not cancel an already dispatched operation. There are no automatic retries.
 - Requests are repeatable. There is no replay ledger, single-use consumption, atomic budget accounting, or provider idempotency integration. Use only repeatable reads for this prototype.
+- The filesystem adapter requires protected local directories and a separate service OS identity. It pins opened files, but it is not safe against hostile directory writers sharing that identity. See [file identity and supported deployment](docs/resources.md).
 - Read-only handler behavior is an application responsibility; the library cannot prove that a callback has no external effects.
 - Revocation stops subsequent authorization. It does not cancel in-flight operations or erase returned data.
 - A permitted read can still disclose sensitive information to its recipient. Capvine does not enforce information-flow restrictions on returned data.
