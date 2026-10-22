@@ -53,7 +53,9 @@ serveIpc(
       const child = await client.delegate({
         grant,
         audience,
-        expiresAt: new Date(Date.now() + 300_000),
+        expiresAt: new Date(
+          Math.min(grant.expiration * 1000, Date.now() + 300_000),
+        ),
       });
       return {
         grant: Buffer.from(await encodeGrant(child)).toString("base64"),
@@ -81,6 +83,9 @@ serveIpc(
           expiration: Math.min(
             grant.expiration,
             Math.floor(Date.now() / 1000) + 60,
+            typeof params.expiration === "number"
+              ? params.expiration
+              : Infinity,
           ),
           nonce: crypto.randomUUID(),
         }).delegate();
