@@ -183,7 +183,7 @@ export function createGmailDemo(options: {
         const beforeAudit = store.audit().length;
         let outcome: Event["outcome"] = "done";
         let expected = true;
-        result = null;
+        if (action === "read" || action === "revoke") result = null;
         if (action === "approve") {
           if (parent || !active)
             throw new Error("Choose a new email before approving again");
@@ -242,7 +242,7 @@ export function createGmailDemo(options: {
                 ),
                 nonce: randomUUID(),
               }).delegate();
-              result = await authority.execute(await encodeGrant(request));
+              await authority.execute(await encodeGrant(request));
             }
             outcome = "allowed";
           } catch (error) {

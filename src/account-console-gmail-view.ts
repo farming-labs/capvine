@@ -51,8 +51,10 @@ ${run ? `<dl><dt>Selected message</dt><dd><code>${e(run.messageId)}</code></dd><
 ${
   run
     ? `<section class="panel"><h2>2. Approve, delegate, and read</h2><p>Approve the coordinator for at most ten minutes. It can give the worker the same read permission for at most five minutes. Subsequent permitted reads need no new approval.</p><div class="actions">${action("approve", "Approve this email", !run.root && active, "")}${action("delegate", "Delegate to worker", !!run.root && !run.child && active)}${action("read", "Read selected email", !!run.child)}</div></section>
+<section class="panel"><h2>Last successful Gmail read</h2><p><strong>${run.providerCalls}</strong> message request${run.providerCalls === 1 ? "" : "s"} reached Gmail through this run. Owner message-list requests are counted separately from this figure.</p>${run.result !== null ? `<p>This is the selected email’s subject and preview text returned by Gmail. Forbidden-request tests keep this successful read visible without fetching the email again.</p><pre class="message-preview">${e(JSON.stringify(run.result, null, 2))}</pre>` : '<p class="muted">No email preview is stored. Approve, delegate, then press Read selected email. Revoking access or ending the task clears this preview.</p>'}
+</section>
 <section class="panel"><h2>3. Test forbidden requests</h2><p>These requests are signed and verified by the server. They try a different resource, a delete action, another worker identity, or an expired request. No delete operation is implemented.</p><div class="actions">${action("other-resource", "Change resource", !!run.child)}${action("write", "Try delete action", !!run.child)}${action("other-worker", "Try another worker", !!run.child)}${action("expired", "Try expired request", !!run.child)}</div><h2 class="spaced">4. Stop access</h2><p>Revoke the parent, then press Read selected email again. The child must be denied before another Gmail request.</p><div class="actions">${action("revoke", "Revoke parent", !!run.root && !run.revoked, "danger")}${action("end-task", "End task", run.active)}</div></section>
-<section class="panel"><h2>Result from Gmail</h2><p><strong>${run.providerCalls}</strong> message request${run.providerCalls === 1 ? "" : "s"} reached Gmail through this run. Owner message-list requests are counted separately from this figure.</p>${run.result !== null ? `<pre class="message-preview">${e(JSON.stringify(run.result, null, 2))}</pre>` : '<p class="muted">No email content to display for the latest action.</p>'}
+<section class="panel"><h2>Request history</h2>
 ${
   run.events.length
     ? `<ul class="list">${run.events
@@ -68,7 +70,7 @@ ${
 <details class="panel"><summary>Inspect public grant and identity details</summary><dl><dt>Coordinator</dt><dd><code>${e(run.coordinator)}</code></dd><dt>Worker</dt><dd><code>${e(run.worker)}</code></dd><dt>Parent grant</dt><dd><code>${e(run.root ?? "Not issued")}</code></dd><dt>Child grant</dt><dd><code>${e(run.child ?? "Not issued")}</code></dd></dl></details>`
     : ""
 }
-<p class="notice">This console drives separate signing identities inside the trusted backend process. It tests capability enforcement; it does not isolate an untrusted agent or its operating system. Email content is kept in this browser session's backend state until the next action, selection change, sign-out, expiry, or shutdown. Returned data cannot be taken back by revocation.</p>`,
+<p class="notice">This console drives separate signing identities inside the trusted backend process. It tests capability enforcement; it does not isolate an untrusted agent or its operating system. Email content is kept in this browser session's backend state until the next read attempt, revocation, task end, selection change, sign-out, session expiry, or shutdown. Returned data cannot be taken back by revocation.</p>`,
     csrf,
   );
 }

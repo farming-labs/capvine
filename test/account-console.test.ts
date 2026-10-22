@@ -551,12 +551,12 @@ test("authenticated Gmail console lists IDs, delegates a read, rejects signed at
     const denied = await f.action(action);
     assert.match(denied, new RegExp(`${action}: DENIED`));
     assert.doesNotMatch(denied, /boundary check failed/);
-    assert.doesNotMatch(denied, /Quarterly report/);
+    assert.match(denied, /Quarterly report/);
     assert.equal(f.provider.counts.reads, 1);
   }
   await f.action("read");
   assert.equal(f.provider.counts.reads, 2);
-  await f.action("revoke");
+  assert.doesNotMatch(await f.action("revoke"), /Quarterly report/);
   const revoked = await f.action("read");
   assert.match(revoked, /read: DENIED/);
   assert.equal(f.provider.counts.reads, 2);
@@ -564,9 +564,10 @@ test("authenticated Gmail console lists IDs, delegates a read, rejects signed at
   await f.select("b43");
   await f.action("approve");
   await f.action("delegate");
-  await f.action("end-task");
+  assert.match(await f.action("read"), /Quarterly report/);
+  assert.doesNotMatch(await f.action("end-task"), /Quarterly report/);
   assert.match(await f.action("read"), /read: DENIED/);
-  assert.equal(f.provider.counts.reads, 2);
+  assert.equal(f.provider.counts.reads, 3);
 });
 
 test("Gmail console binds selections and runs to the authenticated session and rejects tampered controls", async (t) => {
