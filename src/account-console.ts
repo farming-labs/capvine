@@ -15,6 +15,8 @@ import {
   type GmailConsoleOptions,
 } from "./account-console-gmail.ts";
 import { gmailPage } from "./account-console-gmail-view.ts";
+import { workflowsPage } from "./workflow-console-view.ts";
+import type { WorkflowManager } from "./workflows.ts";
 import { readRequest, RequestError } from "./http-internal.ts";
 import {
   dashboard,
@@ -46,17 +48,31 @@ const notices: Record<string, string> = {
     "The change could not be completed. Check the connection’s status before trying again.",
 };
 
-export async function startAccountConsole(options: {
-  accounts: AccountManager;
+interface OwnerConsoleOptions {
+  accounts?: AccountManager;
   ownerId: string;
   loginKey: string;
-  providers: ConsoleProvider[];
+  providers?: ConsoleProvider[];
   port?: number;
   gmail?: GmailConsoleOptions;
-}) {
+  workflows?: WorkflowManager;
+}
+
+export function startAccountConsole(
+  options: OwnerConsoleOptions & {
+    accounts: AccountManager;
+    providers: ConsoleProvider[];
+  },
+) {
+  return startOwnerConsole(options);
+}
+
+export async function startOwnerConsole(options: OwnerConsoleOptions) {
   const { accounts, ownerId } = options;
   const port = options.port ?? 8787;
-  const providers = options.providers.map((provider) => ({ ...provider }));
+  const providers = (options.providers ?? []).map((provider) => ({
+    ...provider,
+  }));
   for (const provider of providers) {
     const url = new URL(provider.authorizationOrigin);
     if (
@@ -73,7 +89,10 @@ export async function startAccountConsole(options: {
     !Number.isSafeInteger(port) ||
     port < 0 ||
     port > 65535 ||
-    !providers.length ||
+    (!accounts && !options.workflows) ||
+    (!!accounts && !providers.length) ||
+    (!!options.gmail && !accounts) ||
+    (!!options.workflows && options.workflows.ownerId !== ownerId) ||
     providers.length > 32 ||
     new Set(providers.map((p) => p.id)).size !== providers.length ||
     providers.some(
@@ -192,7 +211,22 @@ export async function startAccountConsole(options: {
         }
         if (!found?.session.authenticated) return redirect(response, "/login");
         const { session } = found;
+        if (url.pathname === "/workflows" && options.workflows) {
+          const after = url.searchParams.get("after") ?? "";
+          return html(
+            response,
+            200,
+            workflowsPage({
+              ...(await options.workflows.list({ after })),
+              csrf: session.csrf,
+              after: !!after,
+              accounts: !!accounts,
+              notice: url.searchParams.get("notice") ?? "",
+            }),
+          );
+        }
         if (url.pathname === "/") {
+          if (!accounts) return redirect(response, "/workflows");
           const after = url.searchParams.get("after") ?? "";
           const listing = accounts.list(ownerId, { after });
           const notice = url.searchParams.get("notice") ?? "";
@@ -206,10 +240,11 @@ export async function startAccountConsole(options: {
               after: !!after,
               notice: Object.hasOwn(notices, notice) ? notices[notice]! : "",
               gmail: !!options.gmail,
+              workflows: !!options.workflows,
             }),
           );
         }
-        if (url.pathname === "/connection") {
+        if (url.pathname === "/connection" && accounts) {
           const connection = accounts.inspect(
             ownerId,
             url.searchParams.get("id") ?? "",
@@ -220,7 +255,7 @@ export async function startAccountConsole(options: {
             detail(connection, session.csrf, !!options.gmail),
           );
         }
-        if (url.pathname === "/gmail" && options.gmail) {
+        if (url.pathname === "/gmail" && options.gmail && accounts) {
           session.gmail ??= createGmailDemo({
             accounts,
             ownerId,
@@ -252,7 +287,7 @@ export async function startAccountConsole(options: {
             }),
           );
         }
-        if (url.pathname === "/oauth/callback") {
+        if (url.pathname === "/oauth/callback" && accounts) {
           response.setHeader("referrer-policy", "no-referrer");
           try {
             await accounts.complete({
@@ -324,7 +359,39 @@ export async function startAccountConsole(options: {
         cookie(response, "", 0);
         return redirect(response, "/login");
       }
-      if (url.pathname === "/connections/disconnect") {
+      if (url.pathname.startsWith("/workflows/") && options.workflows) {
+        if (
+          ![
+            "/workflows/approve",
+            "/workflows/provision",
+            "/workflows/renew",
+            "/workflows/disable",
+          ].includes(url.pathname)
+        )
+          throw new RequestError(404, "Not found");
+        if (
+          [...fields.keys()].length !== 2 ||
+          [...fields.keys()].some((name) => name !== "csrf" && name !== "id")
+        )
+          throw new RequestError(400, "Unexpected field");
+        const id = value("id");
+        try {
+          if (url.pathname === "/workflows/approve")
+            await options.workflows.approve(id);
+          else if (url.pathname === "/workflows/provision")
+            await options.workflows.provision(id);
+          else if (url.pathname === "/workflows/renew")
+            await options.workflows.renew(id);
+          else await options.workflows.disable(id);
+          return redirect(
+            response,
+            "/workflows?notice=" + url.pathname.slice("/workflows/".length),
+          );
+        } catch {
+          return redirect(response, "/workflows?notice=failed");
+        }
+      }
+      if (url.pathname === "/connections/disconnect" && accounts) {
         const id = value("id");
         accounts.disconnect(ownerId, id);
         for (const current of sessions.values())
@@ -334,7 +401,7 @@ export async function startAccountConsole(options: {
           }
         return redirect(response, "/?notice=disconnected");
       }
-      if (url.pathname.startsWith("/gmail/") && options.gmail) {
+      if (url.pathname.startsWith("/gmail/") && options.gmail && accounts) {
         const allowed: Record<string, string[]> = {
           "/gmail/load": ["csrf", "connection"],
           "/gmail/select": ["csrf", "selection", "message"],
@@ -376,8 +443,9 @@ export async function startAccountConsole(options: {
         }
       }
       if (
-        url.pathname === "/connections/connect" ||
-        url.pathname === "/connections/reconnect"
+        accounts &&
+        (url.pathname === "/connections/connect" ||
+          url.pathname === "/connections/reconnect")
       ) {
         const old =
           url.pathname === "/connections/reconnect"
@@ -418,7 +486,7 @@ export async function startAccountConsole(options: {
         error instanceof RequestError ? error.status : 400,
         page(
           "Request unavailable",
-          '<h1>Request unavailable</h1><p>The request was rejected or could not be completed. Reload the connections page to check its current status.</p><a href="/">Return to connections</a>',
+          '<h1>Request unavailable</h1><p>The request was rejected or could not be completed. Reload the console to check its current status.</p><a href="/">Return to console</a>',
         ),
       );
     } finally {
@@ -448,15 +516,30 @@ export async function startAccountConsole(options: {
   cookieName = `capvine_console_${address.port}`;
   const cleanup = setInterval(pruneSessions, 30_000);
   cleanup.unref();
+  let renewal: Promise<void> | undefined;
+  const renewalTimer = options.workflows
+    ? setInterval(() => {
+        if (!renewal)
+          renewal = options
+            .workflows!.renewDue()
+            .catch(() => {})
+            .finally(() => {
+              renewal = undefined;
+            });
+      }, 10_000)
+    : undefined;
+  renewalTimer?.unref();
   return {
     url: origin,
     callbackUrl: origin + "/oauth/callback",
     close() {
       return (closing ??= (async () => {
+        if (renewalTimer) clearInterval(renewalTimer);
         await new Promise<void>((resolve, reject) =>
           server.close((error) => (error ? reject(error) : resolve())),
         );
         await Promise.allSettled([...jobs]);
+        await renewal;
         clearInterval(cleanup);
         for (const id of sessions.keys()) removeSession(id);
         keyHash.fill(0);

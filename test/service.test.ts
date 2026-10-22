@@ -189,6 +189,7 @@ test("approval commands require operator authentication and cannot override save
     params: unknown,
     token = f.token,
     url = f.service().administrationUrl,
+    method = "approval.issue",
   ) {
     const response = await fetch(url, {
       method: "POST",
@@ -196,7 +197,7 @@ test("approval commands require operator authentication and cannot override save
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ method: "approval.issue", params }),
+      body: JSON.stringify({ method, params }),
     });
     await response.body?.cancel();
     return response.status;
@@ -220,6 +221,33 @@ test("approval commands require operator authentication and cannot override save
   ])
     assert.equal(await command({ id: "fixed", [field]: "replacement" }), 400);
   assert.equal(await command({ id: "unknown" }), 403);
+  assert.equal(
+    await command(
+      { after: "", limit: 20 },
+      "wrong",
+      f.service().administrationUrl,
+      "approval.list",
+    ),
+    401,
+  );
+  assert.equal(
+    await command(
+      { after: "", limit: 20, ownerId: "other" },
+      f.token,
+      f.service().administrationUrl,
+      "approval.list",
+    ),
+    400,
+  );
+  assert.equal(
+    await command(
+      { after: "", limit: 20 },
+      f.token,
+      new URL("/admin", f.service().url).href,
+      "approval.list",
+    ),
+    404,
+  );
   await f.restart([]);
   await assert.rejects(f.admin().issueApproved("fixed"), /403/);
   assert.equal(f.calls(), 0);

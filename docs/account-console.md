@@ -107,4 +107,4 @@ All forms require the exact Origin header and a session-bound, one-use CSRF toke
 
 Disconnect clears the locally usable credentials and preserves the connection ID as a tombstone. It does not revoke provider consent, erase backups, cancel an already dispatched operation, or revoke unrelated grants. Reconnect disconnects the old record first and creates a new record even if the provider flow fails or the owner chooses another account. This prevents old resource bindings from silently switching identities.
 
-A general workflow approval UI, external worker provisioning, multi-user login, remote administration, credential-key rotation, and production deployment remain separate work. The Gmail screen is a session-bound owner test, not a complete hosted application.
+The [workflow console](workflow-console.md) provides reusable approvals and external worker provisioning; pass its manager as `workflows` to combine both views. Multi-user login, remote administration, credential-key rotation, and production deployment remain separate work. The Gmail screen is a session-bound owner test, not a complete hosted application.

@@ -115,6 +115,21 @@ export class SqliteStore implements ApprovalStore {
     return this.#get("approval", id);
   }
 
+  listApprovals(
+    ownerId: string,
+    after: string,
+    limit: number,
+  ): WorkflowApproval[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 101)
+      throw new Error("Invalid approval limit");
+    return this.#db
+      .prepare(
+        "SELECT value FROM capvine_records WHERE kind = 'approval' AND id > ? AND json_extract(value, '$.ownerId') = ? ORDER BY id LIMIT ?",
+      )
+      .all(after, ownerId, limit)
+      .map((row) => JSON.parse(String(row.value)) as WorkflowApproval);
+  }
+
   addResource(resource: Resource): void {
     this.#add("resource", resource.id, resource);
   }

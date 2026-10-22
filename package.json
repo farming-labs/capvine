@@ -25,6 +25,7 @@
     "package:check": "node scripts/check-package.mjs",
     "example:accounts": "tsx examples/accounts/demo.ts",
     "console:accounts": "tsx examples/account-console.ts",
+    "console:workflows": "npm run build && tsx examples/workflow-console.ts",
     "playground": "tsx examples/delegation-playground/main.ts"
   },
   "exports": {
@@ -91,6 +92,14 @@
     "./gmail": {
       "types": "./dist/gmail.d.ts",
       "default": "./dist/gmail.js"
+    },
+    "./workflows": {
+      "types": "./dist/workflows.d.ts",
+      "default": "./dist/workflows.js"
+    },
+    "./workflow-console": {
+      "types": "./dist/workflow-console.d.ts",
+      "default": "./dist/workflow-console.js"
     },
     "./worker": {
       "types": "./dist/worker.d.ts",

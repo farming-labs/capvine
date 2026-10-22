@@ -25,6 +25,21 @@ export class MemoryStore implements ApprovalStore {
     return structuredClone(this.#approvals.get(id));
   }
 
+  listApprovals(
+    ownerId: string,
+    after: string,
+    limit: number,
+  ): WorkflowApproval[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 101)
+      throw new Error("Invalid approval limit");
+    return structuredClone(
+      [...this.#approvals.values()]
+        .filter((row) => row.ownerId === ownerId && row.id > after)
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        .slice(0, limit),
+    );
+  }
+
   addResource(resource: Resource): void {
     if (this.#resources.has(resource.id))
       throw new Error("Resource already exists");

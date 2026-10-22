@@ -23,6 +23,11 @@ export interface ApprovalStore extends StateStore {
   /** Atomically insert the approval and its new active task; reject duplicates. */
   addApproval(approval: WorkflowApproval): void;
   getApproval(id: string): WorkflowApproval | undefined;
+  listApprovals?(
+    ownerId: string,
+    after: string,
+    limit: number,
+  ): WorkflowApproval[];
 }
 
 export interface WorkflowApprovalInput {
@@ -52,6 +57,32 @@ export function createWorkflowApprovals(options: {
   }
 
   return {
+    list(input: { after?: string; limit?: number } = {}) {
+      const after = input.after ?? "";
+      const limit = input.limit ?? 20;
+      if (
+        (after && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(after)) ||
+        !Number.isSafeInteger(limit) ||
+        limit < 1 ||
+        limit > 100 ||
+        !options.store.listApprovals
+      )
+        throw new PermissionDenied("Invalid or unsupported approval listing");
+      const rows = options.store.listApprovals(options.owner, after, limit + 1);
+      const approvals = rows.slice(0, limit).map((row) => {
+        const approval = owned(row.id);
+        return {
+          ...approval,
+          active:
+            options.store.getTask(approval.taskId)?.active === true &&
+            approval.expiresAt > Math.floor(Date.now() / 1000),
+        };
+      });
+      return {
+        approvals,
+        nextCursor: rows.length > limit ? approvals.at(-1)!.id : null,
+      };
+    },
     approve(input: WorkflowApprovalInput): WorkflowApproval {
       if (
         !/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(input.id) ||

@@ -34,12 +34,13 @@ Implemented:
 - Registered-file and PostgreSQL-record adapters with bounded reads and protected target bindings.
 - A live read-only GitHub issue connector and a provisioned per-worker MCP bridge.
 - Private worker assignments, a stdio worker CLI, and renewal that preserves each worker's exact scope and identity.
+- A reusable local workflow console for fixed permissions, persistent approval, separate worker provisioning, automatic renewal, and disable.
 - Direct OAuth/OIDC account connections, encrypted local credentials, serialized token refresh, and a bound Gmail reader.
 - An authenticated local account console with OAuth callbacks, connection management, session/CSRF controls, and an opt-in Gmail delegation test screen.
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: a production service deployment, multi-user/remote account management or a general workflow approval UI, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. Direct account connection and refresh are tested against a local OAuth/OIDC provider fixture; a configured local Google smoke test has also verified consent, refresh, delegated reads, restart, and revocation. Provider-consent revocation and production isolation remain unverified. The live GitHub example uses public data.
+Not implemented: a production service deployment, multi-user/remote account management, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. Direct account connection and refresh are tested against a local OAuth/OIDC provider fixture; a configured local Google smoke test has also verified consent, refresh, delegated reads, restart, and revocation. Provider-consent revocation and production isolation remain unverified. The live GitHub example uses public data.
 
 The [resource server command](docs/server-command.md) combines both adapters. Run `npm run example:resources` for the full separate-process demonstration, including revocation and restart. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state. The [roadmap](docs/roadmap.md) and [release readiness checklist](docs/release-readiness.md) retain the remaining external review, production deployment, and publication gates.
 
@@ -130,6 +131,8 @@ Run `npm run console:accounts -- --fixture` for the [browser account console](do
 The [direct account guide](docs/accounts.md) covers `npm run example:accounts`, OAuth callback integration, encrypted credential storage, refresh, and Gmail resource registration. Workers receive grants; provider credentials stay in the trusted account manager.
 
 The [saved workflow guide](docs/workflow-approvals.md) shows how to approve an exact scope once, issue fresh grants automatically from trusted application code, and disable all dependent grants. It reuses the same permission path with any registered adapter.
+
+Run `npm run console:workflows` for the [workflow approval console](docs/workflow-console.md), which connects saved owner approvals to real separate workers reading a local example file.
 
 The [worker provisioning guide](docs/workers.md) connects those approvals to separate worker processes through `provisionWorker`, `renewWorker`, and `capvine worker`. Run `npm run example:mcp` to read a real file, restart the authority, renew a running worker, and disable its workflow.
 
