@@ -144,13 +144,56 @@ test("MCP sessions bind worker, task, service, and grants through the HTTP verif
     true,
   );
   assert.equal(calls, 1);
+  let refreshed = child;
+  let reloadFailed = false;
+  let transports = 0;
+  const renewable = await session(t, {
+    ...options,
+    transport: async (bytes) => {
+      transports++;
+      return transport(bytes);
+    },
+    tools: [
+      {
+        name: "read_assigned",
+        grant: child,
+        loadGrant: async () => {
+          if (reloadFailed) throw new Error("Assignment unavailable");
+          return refreshed;
+        },
+      },
+    ],
+  });
+  assert.equal(
+    (await renewable.callTool({ name: "read_assigned" })).isError,
+    undefined,
+  );
+  assert.equal(transports, 1);
+  refreshed = await admin.issue({
+    audience: worker,
+    taskId: "job",
+    resource: "urn:capvine:resource:two",
+    action: "record/read",
+    expiresAt: new Date(Date.now() + 60_000),
+  });
+  assert.equal(
+    (await renewable.callTool({ name: "read_assigned" })).isError,
+    true,
+  );
+  assert.equal(transports, 1);
+  reloadFailed = true;
+  assert.equal(
+    (await renewable.callTool({ name: "read_assigned" })).isError,
+    true,
+  );
+  assert.equal(transports, 1);
   await admin.revoke(parent.cid.toString());
   const resumed = await session(t, options);
   assert.equal(
     (await resumed.callTool({ name: "read_assigned" })).isError,
     true,
   );
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   const other: Grant = await admin.issue({
     audience: worker,
     taskId: "other-job",

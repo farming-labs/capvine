@@ -92,6 +92,10 @@
       "types": "./dist/gmail.d.ts",
       "default": "./dist/gmail.js"
     },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "default": "./dist/worker.js"
+    },
     "./account-console": {
       "types": "./dist/account-console.d.ts",
       "default": "./dist/account-console.js"

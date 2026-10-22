@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { initializeService } from "./service.ts";
 import { loadConfiguration, startConfiguredService } from "./configuration.ts";
+import { loadWorker } from "./worker.ts";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 try {
   const [command, path, owner, ...extra] = process.argv.slice(2);
@@ -25,9 +27,20 @@ try {
     };
     process.once("SIGINT", close);
     process.once("SIGTERM", close);
+  } else if (command === "worker" && path && owner === undefined) {
+    const worker = await loadWorker(path);
+    const server = worker.createMcpServer();
+    await server.connect(new StdioServerTransport());
+    const close = () => {
+      void server.close().catch(() => {
+        process.exitCode = 1;
+      });
+    };
+    process.once("SIGINT", close);
+    process.once("SIGTERM", close);
   } else {
     console.error(
-      "Usage: capvine init <new-state-directory> <owner> | capvine serve <private-config.json>",
+      "Usage: capvine init <new-state-directory> <owner> | capvine serve <private-config.json> | capvine worker <private-assignment.json>",
     );
     process.exitCode = 1;
   }
