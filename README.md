@@ -60,6 +60,8 @@ npm run example:accounts
 
 The first example creates a permission for A, delegates it to B, reads one fixture issue, and demonstrates that revoking A's grant stops B's next call. No external account or model API key is needed.
 
+For a browser walkthrough, run `npm run playground` and open **http://127.0.0.1:8788/**. The [delegation playground](examples/delegation-playground/README.md) lets you approve, delegate, read, attempt forbidden requests, and revoke a parent grant. It uses real separate-process signing and server verification with simulated provider data; it does not use connected accounts or replace a production approval UI.
+
 The [network example](examples/network/README.md) runs an authority, coordinator, and three workers in separate processes. Each worker reads only its assigned issue over HTTP. Changing the issue, action, or task fails. Revoking one root leaves independent grants working; ending the task disables all of them. Try `--workers 8` to increase fan-out. This is a correctness demonstration, not a capacity benchmark or OS sandbox.
 
 ## The developer integration

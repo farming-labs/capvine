@@ -16,6 +16,7 @@ This is an implementation sequence, not a delivery-date commitment. Persistent s
 - [x] A bounded Node HTTP handler and client transport.
 - [x] Separate authority, coordinator, and workers with a simulated credentialed provider.
 - [x] Parallel reads, raw escalation attempts, independent-root revocation, and task-end checks across HTTP.
+- [x] A [local delegation playground](../examples/delegation-playground/README.md) with real separate-process signing, raw forbidden requests, provider counters, revocation, and task termination. Disposable fixtures only; production owner approval UI remains open.
 
 **Evidence:** `npm run check`, `npm run example`, and `npm run example:network -- --workers 3`. The network scenario is an automated test too. This establishes an application permission path, not OS isolation or production readiness.
 

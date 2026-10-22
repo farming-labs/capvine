@@ -24,7 +24,8 @@
     "example:resources": "tsx examples/resources.ts",
     "package:check": "node scripts/check-package.mjs",
     "example:accounts": "tsx examples/accounts/demo.ts",
-    "console:accounts": "tsx examples/account-console.ts"
+    "console:accounts": "tsx examples/account-console.ts",
+    "playground": "tsx examples/delegation-playground/main.ts"
   },
   "exports": {
     ".": {
