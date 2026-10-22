@@ -10,8 +10,6 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      CAPVINE_REVIEW_DIR: ${{ runner.temp }}/capvine-review
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -29,7 +27,7 @@ jobs:
       - run: npm run example:accounts
       - run: npm run example:slack
       - run: sh examples/isolation/run.sh
-      - run: npm run release:bundle -- "$CAPVINE_REVIEW_DIR"
+      - run: npm run release:bundle -- "$RUNNER_TEMP/capvine-review"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: capvine-review-${{ github.sha }}
