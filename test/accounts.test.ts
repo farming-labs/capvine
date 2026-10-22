@@ -194,6 +194,97 @@ test("invalid refresh grants persist reconnect-required state without repeated p
   assert.equal(f.provider.counts.refreshes, 1);
 });
 
+for (const authenticationChallenge of [true, false]) {
+  test(`revoked unexpired tokens require a fresh connection (challenge: ${authenticationChallenge})`, async (t) => {
+    const f = await setup(t);
+    f.provider.controls.shortAccess = false;
+    f.provider.controls.authenticationChallenge = authenticationChallenge;
+    await f.connect();
+    f.provider.revoke();
+    let dispatched = 0;
+    const use = () => f.use(async () => dispatched++);
+    const profiles = f.provider.counts.profiles;
+    await Promise.all([assert.rejects(use()), assert.rejects(use())]);
+    assert.equal(dispatched, 0);
+    assert.equal(
+      f.manager().inspect("owner", "mail").status,
+      "reconnect_required",
+    );
+    assert.equal(f.provider.counts.profiles, profiles + 1);
+    assert.equal(f.provider.counts.refreshes, 0);
+    await f.restart();
+    await assert.rejects(use());
+    await assert.rejects(f.begin());
+    assert.equal(f.provider.counts.profiles, profiles + 1);
+    const connected = await f.complete(
+      await f.provider.authorize((await f.begin("mail-new")).url),
+    );
+    assert.equal(connected.status, "connected");
+    assert.equal(
+      await f.manager().withAccessToken(
+        {
+          ownerId: "owner",
+          connectionId: "mail-new",
+          provider: "google",
+          subject: "fixture-subject",
+        },
+        async () => "allowed",
+      ),
+      "allowed",
+    );
+    await assert.rejects(use());
+    assert.equal(dispatched, 0);
+  });
+}
+
+for (const status of [403, 429, 503]) {
+  test(`UserInfo HTTP ${status} blocks dispatch without discarding credentials`, async (t) => {
+    const f = await setup(t);
+    f.provider.controls.shortAccess = false;
+    await f.connect();
+    f.provider.controls.profileStatus = status;
+    let dispatched = false;
+    await assert.rejects(
+      f.use(async () => {
+        dispatched = true;
+      }),
+    );
+    assert.equal(dispatched, false);
+    assert.equal(f.manager().inspect("owner", "mail").status, "connected");
+    await f.restart();
+    f.provider.controls.profileStatus = 200;
+    assert.equal(await f.use(), "allowed");
+    assert.equal(f.provider.counts.refreshes, 0);
+  });
+}
+
+test("failed revocation-state persistence never permits credential dispatch", async (t) => {
+  const f = await setup(t);
+  f.provider.controls.shortAccess = false;
+  await f.connect();
+  f.provider.revoke();
+  const database = new DatabaseSync(join(f.directory, "accounts.db"));
+  t.after(() => database.close());
+  database.exec(
+    "CREATE TRIGGER reject_update BEFORE UPDATE ON account_records BEGIN SELECT RAISE(ABORT,'fixture failure'); END;",
+  );
+  let dispatched = false;
+  const use = () =>
+    f.use(async () => {
+      dispatched = true;
+    });
+  await assert.rejects(use());
+  assert.equal(dispatched, false);
+  assert.equal(f.manager().inspect("owner", "mail").status, "connected");
+  database.exec("DROP TRIGGER reject_update");
+  await assert.rejects(use());
+  assert.equal(dispatched, false);
+  assert.equal(
+    f.manager().inspect("owner", "mail").status,
+    "reconnect_required",
+  );
+});
+
 test("refresh preserves an omitted replacement token and rejects identity or scope loss", async (t) => {
   t.mock.timers.enable({ apis: ["Date"], now: new Date() });
   const f = await setup(t);
@@ -213,7 +304,12 @@ test("refresh preserves an omitted replacement token and rejects identity or sco
   );
 });
 
-for (const phase of ["refresh", "connection", "profile"] as const) {
+for (const phase of [
+  "refresh",
+  "connection",
+  "profile",
+  "revoked-profile",
+] as const) {
   test(`disconnect during ${phase} prevents credential resurrection and dispatch`, async (t) => {
     const f = await setup(t);
     let release!: () => void;
@@ -235,7 +331,7 @@ for (const phase of ["refresh", "connection", "profile"] as const) {
       const callback = await f.provider.authorize((await f.begin()).url);
       result = assert.rejects(f.complete(callback));
     } else {
-      f.provider.controls.shortAccess = phase !== "profile";
+      f.provider.controls.shortAccess = phase === "refresh";
       await f.connect();
       if (phase === "refresh") f.provider.controls.beforeRefresh = hold;
       else f.provider.controls.beforeProfile = hold;
@@ -247,6 +343,7 @@ for (const phase of ["refresh", "connection", "profile"] as const) {
     }
     try {
       await reached;
+      if (phase === "revoked-profile") f.provider.revoke();
       f.manager().disconnect("owner", "mail");
     } finally {
       release();
@@ -373,6 +470,16 @@ test("direct Gmail reads require valid Capvine grants and preserve account/resou
   f.provider.controls.wrongSubject = true;
   await assert.rejects(client.invoke(grant), /Gmail read failed/);
   f.provider.controls.wrongSubject = false;
+  f.provider.revoke();
+  await assert.rejects(client.invoke(grant), /Gmail read failed/);
+  assert.equal(
+    f.manager().inspect("owner", "mail").status,
+    "reconnect_required",
+  );
+  await f.complete(await f.provider.authorize((await f.begin("mail-new")).url));
+  const profiles = f.provider.counts.profiles;
+  await assert.rejects(client.invoke(grant), /Gmail read failed/);
+  assert.equal(f.provider.counts.profiles, profiles);
   store.endTask("job");
   await assert.rejects(client.invoke(grant), PermissionDenied);
   assert.equal(f.provider.counts.reads, 1);

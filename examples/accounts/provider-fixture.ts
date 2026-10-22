@@ -41,12 +41,20 @@ export async function startProviderFixture(
     oversizedMessage: false,
     redirectMessage: false,
     shortAccess: true,
+    profileStatus: 200,
+    authenticationChallenge: true,
     beforeRefresh: async () => {},
     beforeProfile: async () => {},
     beforeList: async () => {},
     messageSubject: "Quarterly report",
   };
-  const counts = { exchanges: 0, refreshes: 0, reads: 0, lists: 0 };
+  const counts = {
+    exchanges: 0,
+    refreshes: 0,
+    profiles: 0,
+    reads: 0,
+    lists: 0,
+  };
   let issuer = "";
   const json = (response: ServerResponse, status: number, value: unknown) => {
     response.writeHead(status, {
@@ -174,15 +182,27 @@ export async function startProviderFixture(
         json(response, 200, { keys: [jwk] });
         return;
       }
+      if (url.pathname === "/userinfo") {
+        counts.profiles++;
+        await controls.beforeProfile();
+        if (controls.profileStatus !== 200) {
+          json(response, controls.profileStatus, { error: "provider_error" });
+          return;
+        }
+      }
       const subject = access.get(
         request.headers.authorization?.replace(/^Bearer /, "") ?? "",
       );
       if (!subject) {
+        if (controls.authenticationChallenge)
+          response.setHeader(
+            "www-authenticate",
+            'Bearer error="invalid_token"',
+          );
         json(response, 401, { error: "unauthorized" });
         return;
       }
       if (url.pathname === "/userinfo") {
-        await controls.beforeProfile();
         json(response, 200, {
           sub: controls.wrongSubject ? "other-subject" : subject,
           ...(controls.oversized ? { extra: "x".repeat(140_000) } : {}),
@@ -233,6 +253,10 @@ export async function startProviderFixture(
     counts,
     issuer,
     redirectUri,
+    revoke() {
+      access.clear();
+      refresh.clear();
+    },
     secrets: () => [clientSecret, ...access.keys(), ...refresh.keys()],
     provider: () =>
       createOidcProvider({
