@@ -26,6 +26,7 @@ jobs:
       - run: npm run example:resources
       - run: npm run package:check
       - run: npm run example:accounts
+      - run: npm run example:slack
 
   isolation:
     runs-on: ubuntu-latest
