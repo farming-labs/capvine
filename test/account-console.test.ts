@@ -570,6 +570,52 @@ test("authenticated Gmail console lists IDs, delegates a read, rejects signed at
   assert.equal(f.provider.counts.reads, 3);
 });
 
+test("provider revocation appears in the console and reconnect requires a new Gmail selection", async (t) => {
+  const f = await gmailSetup(t);
+  await f.load();
+  await f.select();
+  await f.action("approve");
+  await f.action("delegate");
+  await f.action("read");
+  const oldRun = hiddenField(f.html(), "run");
+  f.provider.revoke();
+  await f.b.post("/gmail/action", { run: oldRun, action: "read" });
+  assert.equal(f.provider.counts.reads, 1);
+  assert.match((await f.b.send("/")).html, /Reconnect required/);
+  await f.restart();
+  await f.b.login();
+  assert.match((await f.b.send("/")).html, /Reconnect required/);
+  await f.b.send(`/connection?id=${f.connection.id}`);
+  const start = await f.b.post("/connections/reconnect", {
+    id: f.connection.id,
+  });
+  assert.equal(start.response.status, 303);
+  const callback = await f.provider.authorize(start.location!);
+  assert.equal(
+    (await f.b.send(callback.pathname + callback.search)).location,
+    "/?notice=connected",
+  );
+  const current = f
+    .accounts()
+    .list("owner")
+    .connections.find((c) => c.status === "connected")!;
+  assert.notEqual(current.id, f.connection.id);
+  await f.b.send("/gmail");
+  assert.equal(
+    (await f.b.post("/gmail/action", { run: oldRun, action: "read" })).location,
+    "/gmail?error=action",
+  );
+  assert.equal(f.provider.counts.reads, 1);
+  await f.b.send("/gmail");
+  await f.post("/gmail/load", { connection: current.id });
+  await f.select();
+  assert.match(f.html(), /Awaiting your approval/);
+  await f.action("approve");
+  await f.action("delegate");
+  assert.match(await f.action("read"), /Quarterly report/);
+  assert.equal(f.provider.counts.reads, 2);
+});
+
 test("Gmail console binds selections and runs to the authenticated session and rejects tampered controls", async (t) => {
   const f = await gmailSetup(t);
   const guest = f.browser();

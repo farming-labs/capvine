@@ -281,6 +281,10 @@ export function createOidcProvider(options: {
         accessToken,
         requestOptions,
       );
+      if (response.status === 401) {
+        await response.body?.cancel();
+        throw new ReconnectionRequired("Provider rejected account access");
+      }
       await oauth.processUserInfoResponse(as, client, subject, response);
     },
   };

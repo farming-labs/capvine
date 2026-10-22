@@ -75,6 +75,8 @@ The [GitHub connector and provisioned MCP bridge](connectors.md) are implemented
 
 The [worker provisioning API and CLI](workers.md) provide private assignments, separate-process execution, and proof renewal without changing a running worker's binding. The real-file MCP example verifies reuse of a saved approval after service restart and disabling the workflow. The [reusable owner workflow console](workflow-console.md) implements fixed configured choices, persistent approvals, separate worker provisioning, automatic renewal, and disable through a protected mapping from each worker to its saved approval ([issue #30](https://github.com/farming-labs/capvine/issues/30)).
 
+Provider fixture tests now cover revoking an unexpired token, persistent reconnect-required status, and a fresh authenticated console connection/approval without reactivating old bindings. Live Google consent revocation remains unverified; a temporary provider failure must not be mistaken for revoked consent. Additional private providers still need their own identity, scope, credential-lifecycle, and target-binding integrations.
+
 Integrate with application workflows and background jobs, then extract reusable runtime adapters from demonstrated lifecycle needs. Existing roles or ACLs may inform grant issuance. Optional agent-tool and MCP adapters use the same verifier rather than creating another permission path.
 
 **Deliverables:** authenticated account/resource setup, client identity provisioning, serialized grant assignment, workflow binding, child delegation, and verification on new calls after resume/retry. MCP sessions require authenticated worker/task bindings rather than model-supplied names.

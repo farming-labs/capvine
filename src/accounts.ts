@@ -266,8 +266,9 @@ export async function openAccountManager(options: {
               );
             const provider = providerFor(value);
             let tokens = value.tokens;
-            if (tokens.expiresAt <= Date.now() + 30_000) {
-              try {
+            const refreshing = tokens.expiresAt <= Date.now() + 30_000;
+            try {
+              if (refreshing) {
                 tokens = await provider.refresh(structuredClone(tokens));
                 validTokens(tokens);
                 if (
@@ -283,20 +284,25 @@ export async function openAccountManager(options: {
                   tokens,
                 });
                 record = owned(input.ownerId, input.connectionId);
-              } catch (error) {
-                if (error instanceof ReconnectionRequired) {
-                  const current = owned(input.ownerId, input.connectionId);
-                  if (current.revision === record.revision)
-                    store.replace("connection", value.id, record.revision, {
-                      ...value,
-                      status: "reconnect_required",
-                      tokens: null,
-                    });
-                }
-                throw new Error("Account refresh failed");
+              } else {
+                await provider.verify(tokens.accessToken, input.subject);
               }
+            } catch (error) {
+              if (error instanceof ReconnectionRequired) {
+                const current = owned(input.ownerId, input.connectionId);
+                if (current.revision === record.revision)
+                  store.replace("connection", value.id, record.revision, {
+                    ...value,
+                    status: "reconnect_required",
+                    tokens: null,
+                  });
+              }
+              throw new Error(
+                refreshing
+                  ? "Account refresh failed"
+                  : "Account verification failed",
+              );
             }
-            await provider.verify(tokens.accessToken, input.subject);
             if (
               owned(input.ownerId, input.connectionId).revision !==
               record.revision
