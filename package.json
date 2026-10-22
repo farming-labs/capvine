@@ -24,6 +24,7 @@
     "example:resources": "tsx examples/resources.ts",
     "package:check": "node scripts/check-package.mjs",
     "example:accounts": "tsx examples/accounts/demo.ts",
+    "example:slack": "tsx examples/slack/demo.ts",
     "console:accounts": "tsx examples/account-console.ts",
     "console:workflows": "npm run build && tsx examples/workflow-console.ts",
     "playground": "tsx examples/delegation-playground/main.ts"
@@ -92,6 +93,10 @@
     "./gmail": {
       "types": "./dist/gmail.d.ts",
       "default": "./dist/gmail.js"
+    },
+    "./slack": {
+      "types": "./dist/slack.d.ts",
+      "default": "./dist/slack.js"
     },
     "./workflows": {
       "types": "./dist/workflows.d.ts",

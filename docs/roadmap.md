@@ -77,6 +77,8 @@ The [worker provisioning API and CLI](workers.md) provide private assignments, s
 
 Provider fixture tests now cover revoking an unexpired token, persistent reconnect-required status, and a fresh authenticated console connection/approval without reactivating old bindings. Live Google consent revocation remains unverified; a temporary provider failure must not be mistaken for revoked consent. Additional private providers still need their own identity, scope, credential-lifecycle, and target-binding integrations.
 
+The [Slack account provider and message adapter](slack.md) implement OAuth v2 PKCE, rotating user tokens, stable workspace/user binding, and exact conversation/message reads through the existing verifier and worker APIs. `test/slack.test.ts` and `npm run example:slack` verify an HTTP fixture, encrypted credentials, rotation/restart, separate-process MCP reads, raw escalation rejection, and revocation. Live Slack consent and workspace-policy validation remain open; there is no Slack message-selection browser screen.
+
 Integrate with application workflows and background jobs, then extract reusable runtime adapters from demonstrated lifecycle needs. Existing roles or ACLs may inform grant issuance. Optional agent-tool and MCP adapters use the same verifier rather than creating another permission path.
 
 **Deliverables:** authenticated account/resource setup, client identity provisioning, serialized grant assignment, workflow binding, child delegation, and verification on new calls after resume/retry. MCP sessions require authenticated worker/task bindings rather than model-supplied names.
