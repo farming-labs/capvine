@@ -18,11 +18,11 @@ export function createMcpServer(options: {
   service: Principal;
   taskId: string;
   transport: (invocation: Uint8Array) => Promise<Json>;
-  tools: { name: string; grant: Grant }[];
+  tools: { name: string; grant: Grant; loadGrant?: () => Promise<Grant> }[];
 }) {
   if (!options.taskId || options.tools.length > 32)
     throw new Error("Invalid MCP provisioning");
-  const tools = new Map<string, Grant>();
+  const tools = new Map<string, (typeof options.tools)[number]>();
   for (const tool of options.tools) {
     const claim = readClaim(tool.grant);
     if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(tool.name) || tools.has(tool.name))
@@ -35,7 +35,7 @@ export function createMcpServer(options: {
       throw new PermissionDenied(
         "Grant does not belong to this worker session",
       );
-    tools.set(tool.name, tool.grant);
+    tools.set(tool.name, { ...tool });
   }
   const client = createClient({
     signer: options.signer,
@@ -59,8 +59,8 @@ export function createMcpServer(options: {
     })),
   }));
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const grant = tools.get(request.params.name);
-    if (!grant || Object.keys(request.params.arguments ?? {}).length !== 0)
+    const tool = tools.get(request.params.name);
+    if (!tool || Object.keys(request.params.arguments ?? {}).length !== 0)
       return {
         isError: true,
         content: [
@@ -71,6 +71,17 @@ export function createMcpServer(options: {
         ],
       };
     try {
+      const grant = tool.loadGrant ? await tool.loadGrant() : tool.grant;
+      const initial = readClaim(tool.grant);
+      const claim = readClaim(grant);
+      if (
+        grant.audience.did() !== options.signer.did() ||
+        claim.resource !== initial.resource ||
+        claim.action !== initial.action ||
+        claim.task !== initial.task ||
+        claim.service !== initial.service
+      )
+        throw new PermissionDenied("Renewal changed the tool's authority");
       const value = await client.invoke(grant);
       return {
         content: [{ type: "text" as const, text: JSON.stringify(value) }],

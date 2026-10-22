@@ -37,6 +37,7 @@ The repository tests explicit negative cases: changed resources, operations, tas
 - A permitted read can still disclose sensitive information to its recipient. Capvine does not enforce information-flow restrictions on returned data.
 - A valid capability does not make model output correct, remove prompt injection, or protect an unrestricted browser, shell, operating system, or network path.
 - The MCP bridge trusts launcher provisioning and serves one worker/task per instance. It provides no public HTTP session authentication; anyone controlling its channel can use its assigned grants.
+- Worker assignment files contain the worker's own private key and scoped proof. Provisioning storage and its ancestor paths are trusted. Atomic file renewal preserves the original binding for a running client; it does not sandbox the worker or make shared-UID files safe against hostile code. Keep other assignments and privileged credentials outside the worker's filesystem namespace. See [worker deployment constraints](docs/workers.md).
 - Shared client identities do not provide per-client isolation. The application must keep client keys and task bindings separate.
 - Offline child delegations are not exhaustively indexed. Root grants and authorization outcomes are persisted; a comprehensive grant explorer is future work.
 - SQLite storage and audit logs are trusted local state, not encrypted or tamper-evident storage.

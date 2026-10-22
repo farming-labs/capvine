@@ -81,6 +81,8 @@ await admin.disableApproval("daily-report");
 
 Application code schedules runs and delivers each grant. This API does not install a scheduler, watch token expiry, or present an approval screen.
 
+Use the [worker provisioning API](workers.md) to create a private assignment for a separate worker and replace its proof after fresh issuance. Running MCP and direct workers reload the proof without changing their resource, action, task, service, or signing identity. `npm run example:mcp` demonstrates saved approvals, service restart, and renewal against a real file.
+
 `issueApproved` takes only the saved ID. Its authenticated HTTP command rejects extra fields; a caller cannot change the recipient, action, resource, expiry, or task through renewal. The ID itself is not authority: renewal still requires operator authentication. The backend must select the saved approval through its own authorized workflow mapping, not blindly expose its broad operator token or accept arbitrary model-selected approval IDs.
 
 Use the existing `createClient().delegate()` to assign a coordinator's grant to a newly created worker identity. The child retains the same resource, operation, task, and service and may only shorten expiry. This needs no further owner prompt. Start a fresh delegation from a renewed parent when needed; an expired child is not refreshed in place. A different resource requires another approval or another explicitly authorized root grant.

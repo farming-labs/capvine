@@ -33,6 +33,7 @@ Implemented:
 - A validated server command combining real file and PostgreSQL reads through one permission path.
 - Registered-file and PostgreSQL-record adapters with bounded reads and protected target bindings.
 - A live read-only GitHub issue connector and a provisioned per-worker MCP bridge.
+- Private worker assignments, a stdio worker CLI, and renewal that preserves each worker's exact scope and identity.
 - Direct OAuth/OIDC account connections, encrypted local credentials, serialized token refresh, and a bound Gmail reader.
 - An authenticated local account console with OAuth callbacks, connection management, session/CSRF controls, and an opt-in Gmail delegation test screen.
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
@@ -129,6 +130,8 @@ Run `npm run console:accounts -- --fixture` for the [browser account console](do
 The [direct account guide](docs/accounts.md) covers `npm run example:accounts`, OAuth callback integration, encrypted credential storage, refresh, and Gmail resource registration. Workers receive grants; provider credentials stay in the trusted account manager.
 
 The [saved workflow guide](docs/workflow-approvals.md) shows how to approve an exact scope once, issue fresh grants automatically from trusted application code, and disable all dependent grants. It reuses the same permission path with any registered adapter.
+
+The [worker provisioning guide](docs/workers.md) connects those approvals to separate worker processes through `provisionWorker`, `renewWorker`, and `capvine worker`. Run `npm run example:mcp` to read a real file, restart the authority, renew a running worker, and disable its workflow.
 
 ## Persist state
 
