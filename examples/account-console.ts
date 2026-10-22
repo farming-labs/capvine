@@ -104,6 +104,9 @@ try {
     ownerId,
     loginKey,
     port,
+    gmail: fixture
+      ? { source: "fixture", fetch: fixture.gmailFetch }
+      : { source: "google" },
     providers: [
       {
         id: "google",

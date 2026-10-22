@@ -1,6 +1,6 @@
 # Account connection console
 
-The optional `./account-console` entry provides a runnable, single-owner browser application around the direct account manager. It supports owner login, account listings, OAuth callbacks, disconnect, and reconnect. Provider credentials remain in the backend. Connecting an account does not issue a capability or register a resource; those remain separate owner-authorized operations.
+The optional `./account-console` entry provides a runnable, single-owner browser application around the direct account manager. It supports owner login, account listings, OAuth callbacks, disconnect, reconnect, and an optional Gmail delegation screen. Provider credentials remain in the backend. Connecting an account does not issue a capability or register a resource; those remain separate owner-authorized operations.
 
 ## Try the complete flow locally
 
@@ -50,10 +50,27 @@ JS
 ```
 
 5. Run `npm run console:accounts -- --config /absolute/private/config.json`. Sign in with the console key, then connect Google through its consent screen. The requested scopes are `openid` and `gmail.readonly`. Provider consent is broader than a Capvine grant: only your registered messages become available to a worker.
-6. Verify the connection, restart the console, and verify it remains listed. Register a selected message using the returned connection ID and subject in the [Gmail adapter](accounts.md). Use the same account-manager instance when the console and resource server run together; the store deliberately prevents concurrent managers opening the same directory. If running separately, stop the console before opening that store in the resource backend.
+6. Verify the connection, restart the console, and verify it remains listed. Open **Test Gmail delegation** beside the connected account to select an email and exercise a real delegated read. For application integration, register a selected message using the returned connection ID and subject in the [Gmail adapter](accounts.md). Use the same account-manager instance when the console and resource server run together; the store deliberately prevents concurrent managers opening the same directory. If running separately, stop the console before opening that store in the resource backend.
 7. Verify a real delegated read after access-token expiry and after provider consent revocation. Refresh happens when a trusted handler uses the account, not when the console displays a listing. A list entry alone does not prove the provider still accepts the credentials. A refresh rejection changes the status to **Reconnect required** when the backend attempts that use. Reconnect requires registering a fresh connection ID; existing bindings are never rewritten automatically.
 
 Google's [web-server OAuth instructions](https://developers.google.com/identity/protocols/oauth2/web-server) describe registration and offline access. Gmail read access is a [restricted scope](https://developers.google.com/workspace/gmail/api/auth/scopes); provider verification requirements and refresh-token lifetime restrictions depend on the app's publishing/testing status. Live Google consent, refresh, and provider-revocation behavior must be validated with a configured application; local fixture results do not establish them.
+
+## Test a Gmail delegation in the browser
+
+The runnable console enables this screen for both `--config` and `--fixture`. Embedded consoles opt in with `gmail: { source: "google" }`. The fixture launcher uses its local provider and explicitly labels the screen **Local provider fixture**; the Google configuration labels it **Live Google / Gmail** and calls the real Gmail API. This feature does not change the Google OAuth scopes or connect an account automatically.
+
+1. Sign in and open **Test Gmail delegation** beside a connected Google account.
+2. **Load recent email IDs** makes one owner-authorized list request, limited to five inbox IDs. It does not retrieve message content. Select an ID from the returned list. The backend checks ownership and binds that exact ID to the selected connection and Google subject.
+3. **Approve this email** issues a read grant to the coordinator for at most ten minutes, capped by the console session's remaining lifetime.
+4. **Delegate to worker** creates a child grant with the same scope and at most five minutes remaining. **Read selected email** invokes the signed grant through the verifier and Gmail adapter, then shows the actual message ID, subject, and snippet.
+5. **Change resource**, **Try delete action**, **Try another worker**, and **Try expired request** send raw signed attempts through the same verifier. Each must be denied with zero additional Gmail message requests. A delete handler is never registered; the test cannot send a delete request to Gmail.
+6. **Revoke parent**, then read again. The child must fail. **End task** blocks subsequent calls for that task. **Choose another email** invalidates the old run before starting another selection.
+
+The run records provider-message request counts and actual authorization outcomes. Owner message discovery and OAuth refresh calls are separate from those counts. An unexpected outcome is shown as a failed boundary check, not a successful test. Message content is escaped as text, kept only in session memory, and cleared before the next run action, selection replacement, sign-out, session cleanup, or process shutdown. Revocation does not erase data already returned to a reader or cancel a request already dispatched.
+
+This console drives distinct signing identities inside the same trusted backend process. It does not launch an untrusted worker, isolate the OS, or provision a remote MCP session. The browser never receives signing keys, serialized grants, or provider credentials. The owner login, exact-origin checks, one-use CSRF tokens, bounded inputs, and session binding apply to every action. Requests cannot select unlisted messages, choose another session's run, expand the action, supply a target URL, or select another owner's account. Demo grants and selections are ephemeral; reconnect or restart requires a new selection and approval, while saved Google credentials persist.
+
+Run `npm test` for the browser HTTP integration checks against the local OAuth provider. They cover real signed authorization, allowed reads, raw denials before provider access, parent revocation, task termination, session substitution, sign-out during discovery, escaped provider text, disconnect, and restart. Real Google tests require the configured web client and an enabled Gmail API. A local live smoke check has verified consent, refresh, delegated reads, persistence, parent revocation, and workflow disabling; provider-consent revocation and production isolation remain separate checks.
 
 ## Embed in an existing backend
 
@@ -65,6 +82,7 @@ const consoleApp = await startAccountConsole({
   ownerId: "local-owner",
   loginKey: protectedConsoleKey, // 32 random bytes encoded as base64url.
   port: 8787,
+  gmail: { source: "google" }, // Optional owner-driven Gmail delegation test.
   providers: [
     {
       id: "google",
@@ -89,4 +107,4 @@ All forms require the exact Origin header and a session-bound, one-use CSRF toke
 
 Disconnect clears the locally usable credentials and preserves the connection ID as a tombstone. It does not revoke provider consent, erase backups, cancel an already dispatched operation, or revoke unrelated grants. Reconnect disconnects the old record first and creates a new record even if the provider flow fails or the owner chooses another account. This prevents old resource bindings from silently switching identities.
 
-Workflow approval UI, resource-selection UI, multi-user login, remote administration, credential-key rotation, and production deployment remain separate work. The console supplies account setup and management, not a complete hosted application.
+A general workflow approval UI, external worker provisioning, multi-user login, remote administration, credential-key rotation, and production deployment remain separate work. The Gmail screen is a session-bound owner test, not a complete hosted application.
