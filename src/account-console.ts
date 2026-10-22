@@ -10,6 +10,11 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { AccountManager } from "./accounts.ts";
+import {
+  createGmailDemo,
+  type GmailConsoleOptions,
+} from "./account-console-gmail.ts";
+import { gmailPage } from "./account-console-gmail-view.ts";
 import { readRequest, RequestError } from "./http-internal.ts";
 import {
   dashboard,
@@ -25,6 +30,8 @@ interface Session {
   csrf: string;
   nonce: string;
   expiresAt: number;
+  gmail?: ReturnType<typeof createGmailDemo>;
+  gmailBusy?: boolean;
 }
 const random = () => randomBytes(32).toString("base64url");
 const digest = (value: string) => createHash("sha256").update(value).digest();
@@ -45,6 +52,7 @@ export async function startAccountConsole(options: {
   loginKey: string;
   providers: ConsoleProvider[];
   port?: number;
+  gmail?: GmailConsoleOptions;
 }) {
   const { accounts, ownerId } = options;
   const port = options.port ?? 8787;
@@ -79,6 +87,14 @@ export async function startAccountConsole(options: {
   const keyHash = digest(options.loginKey);
   const sessions = new Map<string, Session>();
   const jobs = new Set<Promise<void>>();
+  function removeSession(id: string) {
+    sessions.get(id)?.gmail?.close();
+    sessions.delete(id);
+  }
+  function pruneSessions() {
+    for (const [id, session] of sessions)
+      if (session.expiresAt <= Date.now()) removeSession(id);
+  }
   let origin = "";
   let cookieName = "";
   let closing: Promise<void> | undefined;
@@ -138,8 +154,7 @@ export async function startAccountConsole(options: {
     response.setHeader("cross-origin-opener-policy", "same-origin");
     response.setHeader("connection", "close");
     try {
-      for (const [id, session] of sessions)
-        if (session.expiresAt <= Date.now()) sessions.delete(id);
+      pruneSessions();
       if (closing || jobs.size >= 16)
         throw new RequestError(503, "Unavailable");
       if (request.headers.host !== new URL(origin).host)
@@ -190,6 +205,7 @@ export async function startAccountConsole(options: {
               providers,
               after: !!after,
               notice: Object.hasOwn(notices, notice) ? notices[notice]! : "",
+              gmail: !!options.gmail,
             }),
           );
         }
@@ -198,7 +214,43 @@ export async function startAccountConsole(options: {
             ownerId,
             url.searchParams.get("id") ?? "",
           );
-          return html(response, 200, detail(connection, session.csrf));
+          return html(
+            response,
+            200,
+            detail(connection, session.csrf, !!options.gmail),
+          );
+        }
+        if (url.pathname === "/gmail" && options.gmail) {
+          session.gmail ??= createGmailDemo({
+            accounts,
+            ownerId,
+            sessionExpiresAt: session.expiresAt,
+            ...options.gmail,
+          });
+          const state = session.gmail.view();
+          const connectionId =
+            url.searchParams.get("connection") ??
+            state.selection?.connectionId ??
+            "";
+          if (connectionId) {
+            const connection = accounts.inspect(ownerId, connectionId);
+            if (
+              connection.provider !== "google" ||
+              connection.status !== "connected"
+            )
+              throw new RequestError(400, "Connected Google account required");
+          }
+          return html(
+            response,
+            200,
+            gmailPage({
+              csrf: session.csrf,
+              state,
+              connectionId,
+              source: options.gmail.source,
+              error: url.searchParams.get("error") === "action",
+            }),
+          );
         }
         if (url.pathname === "/oauth/callback") {
           response.setHeader("referrer-policy", "no-referrer");
@@ -260,7 +312,7 @@ export async function startAccountConsole(options: {
             login(session.csrf, "The access key was not accepted. Try again."),
           );
         }
-        sessions.delete(found.id);
+        removeSession(found.id);
         newSession(response, true);
         return redirect(response, "/");
       }
@@ -268,13 +320,60 @@ export async function startAccountConsole(options: {
         throw new RequestError(403, "Sign in required");
       session.csrf = random();
       if (url.pathname === "/logout") {
-        sessions.delete(found.id);
+        removeSession(found.id);
         cookie(response, "", 0);
         return redirect(response, "/login");
       }
       if (url.pathname === "/connections/disconnect") {
-        accounts.disconnect(ownerId, value("id"));
+        const id = value("id");
+        accounts.disconnect(ownerId, id);
+        for (const current of sessions.values())
+          if (current.gmail?.view().selection?.connectionId === id) {
+            current.gmail.close();
+            delete current.gmail;
+          }
         return redirect(response, "/?notice=disconnected");
+      }
+      if (url.pathname.startsWith("/gmail/") && options.gmail) {
+        const allowed: Record<string, string[]> = {
+          "/gmail/load": ["csrf", "connection"],
+          "/gmail/select": ["csrf", "selection", "message"],
+          "/gmail/action": ["csrf", "run", "action"],
+          "/gmail/reset": ["csrf"],
+        };
+        const names = allowed[url.pathname];
+        if (!names) throw new RequestError(404, "Not found");
+        if (
+          [...fields.keys()].length !== names.length ||
+          [...fields.keys()].some((name) => !names.includes(name))
+        )
+          throw new RequestError(400, "Unexpected field");
+        for (const name of names) value(name);
+        if (session.gmailBusy)
+          throw new RequestError(409, "An action is already running");
+        session.gmail ??= createGmailDemo({
+          accounts,
+          ownerId,
+          sessionExpiresAt: session.expiresAt,
+          ...options.gmail,
+        });
+        session.gmailBusy = true;
+        try {
+          if (url.pathname === "/gmail/load")
+            await session.gmail.load(value("connection"));
+          else if (url.pathname === "/gmail/select")
+            await session.gmail.select(value("selection"), value("message"));
+          else if (url.pathname === "/gmail/action")
+            await session.gmail.act(value("run"), value("action"));
+          else session.gmail.reset();
+          if (current(request)?.session !== session)
+            throw new RequestError(403, "Session ended");
+          return redirect(response, "/gmail");
+        } catch {
+          return redirect(response, "/gmail?error=action");
+        } finally {
+          session.gmailBusy = false;
+        }
       }
       if (
         url.pathname === "/connections/connect" ||
@@ -287,7 +386,14 @@ export async function startAccountConsole(options: {
         const provider = old?.provider ?? value("provider");
         if (!providers.some((p) => p.id === provider))
           throw new RequestError(400, "Unknown provider");
-        if (old) accounts.disconnect(ownerId, old.id);
+        if (old) {
+          accounts.disconnect(ownerId, old.id);
+          for (const current of sessions.values())
+            if (current.gmail?.view().selection?.connectionId === old.id) {
+              current.gmail.close();
+              delete current.gmail;
+            }
+        }
         try {
           const started = await accounts.begin({
             ownerId,
@@ -340,6 +446,8 @@ export async function startAccountConsole(options: {
     throw new Error("Console failed to listen");
   origin = `http://127.0.0.1:${address.port}`;
   cookieName = `capvine_console_${address.port}`;
+  const cleanup = setInterval(pruneSessions, 30_000);
+  cleanup.unref();
   return {
     url: origin,
     callbackUrl: origin + "/oauth/callback",
@@ -349,7 +457,8 @@ export async function startAccountConsole(options: {
           server.close((error) => (error ? reject(error) : resolve())),
         );
         await Promise.allSettled([...jobs]);
-        sessions.clear();
+        clearInterval(cleanup);
+        for (const id of sessions.keys()) removeSession(id);
         keyHash.fill(0);
       })());
     },

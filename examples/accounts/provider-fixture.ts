@@ -43,8 +43,10 @@ export async function startProviderFixture(
     shortAccess: true,
     beforeRefresh: async () => {},
     beforeProfile: async () => {},
+    beforeList: async () => {},
+    messageSubject: "Quarterly report",
   };
-  const counts = { exchanges: 0, refreshes: 0, reads: 0 };
+  const counts = { exchanges: 0, refreshes: 0, reads: 0, lists: 0 };
   let issuer = "";
   const json = (response: ServerResponse, status: number, value: unknown) => {
     response.writeHead(status, {
@@ -187,7 +189,16 @@ export async function startProviderFixture(
         });
         return;
       }
-      if (url.pathname === "/messages/a42") {
+      if (url.pathname === "/messages") {
+        counts.lists++;
+        await controls.beforeList();
+        json(response, 200, { messages: [{ id: "a42" }, { id: "b43" }] });
+        return;
+      }
+      if (
+        url.pathname === "/messages/a42" ||
+        url.pathname === "/messages/b43"
+      ) {
         counts.reads++;
         if (controls.redirectMessage) {
           response.writeHead(302, { location: issuer + "/unexpected" });
@@ -195,12 +206,12 @@ export async function startProviderFixture(
           return;
         }
         json(response, 200, {
-          id: controls.wrongMessage ? "b43" : "a42",
+          id: controls.wrongMessage ? "wrong" : url.pathname.split("/").at(-1),
           snippet: controls.oversizedMessage
             ? "x".repeat(140_000)
             : "The report is ready.",
           payload: {
-            headers: [{ name: "Subject", value: "Quarterly report" }],
+            headers: [{ name: "Subject", value: controls.messageSubject }],
           },
         });
         return;
@@ -248,7 +259,10 @@ export async function startProviderFixture(
       const url = new URL(String(input));
       if (
         url.origin !== "https://gmail.googleapis.com" ||
-        !url.pathname.startsWith("/gmail/v1/users/me/messages/")
+        !(
+          url.pathname === "/gmail/v1/users/me/messages" ||
+          url.pathname.startsWith("/gmail/v1/users/me/messages/")
+        )
       )
         throw new Error("Unexpected Gmail route");
       return fetch(

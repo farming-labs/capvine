@@ -12,7 +12,7 @@ An approval fixes one recipient identity, one resource, one action, a finite app
 | Allow a client to read a registered object | Your owner-facing application and Capvine administration | Once for this saved approval; again for a different scope, recipient, or expired/disabled approval |
 | Issue a grant and verify an invocation     | Trusted application backend and Capvine                  | The backend requests a grant when needed; the server verifies every call                           |
 
-Provider token renewal belongs to the account manager and is distinct from renewing a Capvine grant. The provider may require consent again. The example exercises code exchange, refresh rotation, and persistence against a local provider fixture; live Google consent/refresh still needs validation.
+Provider token renewal belongs to the account manager and is distinct from renewing a Capvine grant. The provider may require consent again. The example exercises code exchange, refresh rotation, and persistence against a local provider fixture; configured live Google results are described in the [account console guide](account-console.md).
 
 ```mermaid
 sequenceDiagram
@@ -101,4 +101,4 @@ The operator API remains broadly privileged for one configured owner. It can cre
 
 `test/approvals.test.ts` covers exact bindings, raw signed escalation requests, expiry, child invalidation, owner boundaries, storage failure, atomic creation, and issuance racing with disable. `test/service.test.ts` covers authenticated commands, field substitution, resource removal, persistence, and disable across restart.
 
-Run the [direct account demonstration](accounts.md) for an OAuth/OIDC provider fixture, persistent credential and authorization stores, and a separate worker process. It demonstrates code exchange, refresh, one approval reused after restart, account identity substitution rejection, and disabling existing grants. Live Google consent/refresh, an owner approval UI, arbitrary Gmail selection, writes, and production isolation remain outside this milestone.
+Run the [direct account demonstration](accounts.md) for an OAuth/OIDC provider fixture, persistent credential and authorization stores, and a separate worker process. It demonstrates code exchange, refresh, one approval reused after restart, account identity substitution rejection, and disabling existing grants. The [account console](account-console.md) adds a session-bound Gmail selection and approval test; configured live Google consent, refresh, and delegated reads have also been checked. A reusable workflow approval UI, provider-consent revocation validation, arbitrary Gmail selection, writes, and production isolation remain separate work.

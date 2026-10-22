@@ -34,11 +34,11 @@ Implemented:
 - Registered-file and PostgreSQL-record adapters with bounded reads and protected target bindings.
 - A live read-only GitHub issue connector and a provisioned per-worker MCP bridge.
 - Direct OAuth/OIDC account connections, encrypted local credentials, serialized token refresh, and a bound Gmail reader.
-- An authenticated local account console with OAuth callbacks, connection management, and session/CSRF controls.
+- An authenticated local account console with OAuth callbacks, connection management, session/CSRF controls, and an opt-in Gmail delegation test screen.
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: a production service deployment, multi-user/remote account management or workflow approval UI, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. Direct account connection and refresh are tested against a local OAuth/OIDC provider fixture; live Google consent and refresh remain unverified. The live GitHub example uses public data.
+Not implemented: a production service deployment, multi-user/remote account management or a general workflow approval UI, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. Direct account connection and refresh are tested against a local OAuth/OIDC provider fixture; a configured local Google smoke test has also verified consent, refresh, delegated reads, restart, and revocation. Provider-consent revocation and production isolation remain unverified. The live GitHub example uses public data.
 
 The [resource server command](docs/server-command.md) combines both adapters. Run `npm run example:resources` for the full separate-process demonstration, including revocation and restart. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state. The [roadmap](docs/roadmap.md) and [release readiness checklist](docs/release-readiness.md) retain the remaining external review, production deployment, and publication gates.
 
@@ -124,7 +124,7 @@ The [integration guide](docs/integration.md) describes resource registration, gr
 
 See the [GitHub and MCP guide](docs/connectors.md), `npm run example:github`, and `npm run example:mcp` for the implemented integrations.
 
-Run `npm run console:accounts -- --fixture` for the [browser account console](docs/account-console.md), or configure a real Google web client using its guide. The console is local and single-owner; it does not issue grants automatically.
+Run `npm run console:accounts -- --fixture` for the [browser account console](docs/account-console.md), or configure a real Google web client using its guide. The console is local and single-owner. Its Gmail screen lets the owner select one inbox message, approve and delegate an exact read, inspect the real response, and test revocation. Connecting an account alone never issues a grant.
 
 The [direct account guide](docs/accounts.md) covers `npm run example:accounts`, OAuth callback integration, encrypted credential storage, refresh, and Gmail resource registration. Workers receive grants; provider credentials stay in the trusted account manager.
 

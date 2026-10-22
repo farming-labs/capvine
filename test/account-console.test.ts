@@ -16,7 +16,7 @@ import {
 } from "../src/index.ts";
 import { startProviderFixture } from "../examples/accounts/provider-fixture.ts";
 
-async function setup(t: TestContext) {
+async function setup(t: TestContext, gmail = false) {
   const socket = createServer();
   let temporary: string | undefined;
   let provider!: Awaited<ReturnType<typeof startProviderFixture>>;
@@ -50,6 +50,9 @@ async function setup(t: TestContext) {
       ownerId: "owner",
       loginKey,
       port,
+      ...(gmail
+        ? { gmail: { source: "fixture" as const, fetch: provider.gmailFetch } }
+        : {}),
       providers: [
         {
           id: "google",
@@ -492,4 +495,198 @@ test("failed login attempts are limited without exposing the configured key", as
     (await b.post("/login", { key: f.loginKey })).response.status,
     429,
   );
+});
+
+function hiddenField(html: string, name: string) {
+  const match = new RegExp(`name="${name}" value="([^"]+)"`).exec(html)?.[1];
+  assert.ok(match, `Missing ${name} field`);
+  return match;
+}
+
+async function gmailSetup(t: TestContext) {
+  const f = await setup(t, true);
+  const b = f.browser();
+  await b.login();
+  await b.connect();
+  const connection = f.accounts().list("owner").connections[0]!;
+  let html = (await b.send(`/gmail?connection=${connection.id}`)).html;
+  async function post(path: string, values: Record<string, string> = {}) {
+    const response = await b.post(path, values);
+    assert.equal(response.response.status, 303);
+    assert.equal(response.location, "/gmail");
+    html = (await b.send("/gmail")).html;
+    return html;
+  }
+  const load = () => post("/gmail/load", { connection: connection.id });
+  const select = (message = "a42") =>
+    post("/gmail/select", {
+      selection: hiddenField(html, "selection"),
+      message,
+    });
+  const action = (action: string) =>
+    post("/gmail/action", { run: hiddenField(html, "run"), action });
+  return { ...f, b, connection, post, load, select, action, html: () => html };
+}
+
+test("authenticated Gmail console lists IDs, delegates a read, rejects signed attacks, and revokes access", async (t) => {
+  const f = await gmailSetup(t);
+  assert.equal(f.provider.counts.lists, 0);
+  await f.load();
+  assert.equal(f.provider.counts.lists, 1);
+  assert.equal(f.provider.counts.reads, 0);
+  assert.doesNotMatch(f.html(), /Quarterly report/);
+  await f.select();
+  assert.match(f.html(), /Awaiting your approval/);
+  await f.action("approve");
+  await f.action("delegate");
+  assert.equal(f.provider.counts.reads, 0);
+  const result = await f.action("read");
+  assert.match(result, /Quarterly report/);
+  assert.match(result, /The report is ready/);
+  assert.match(result, /read: ALLOWED/);
+  assert.equal(f.provider.counts.reads, 1);
+  for (const secret of f.provider.secrets())
+    assert.equal(result.includes(secret), false);
+  for (const action of ["other-resource", "write", "other-worker", "expired"]) {
+    const denied = await f.action(action);
+    assert.match(denied, new RegExp(`${action}: DENIED`));
+    assert.doesNotMatch(denied, /boundary check failed/);
+    assert.match(denied, /Quarterly report/);
+    assert.equal(f.provider.counts.reads, 1);
+  }
+  await f.action("read");
+  assert.equal(f.provider.counts.reads, 2);
+  assert.doesNotMatch(await f.action("revoke"), /Quarterly report/);
+  const revoked = await f.action("read");
+  assert.match(revoked, /read: DENIED/);
+  assert.equal(f.provider.counts.reads, 2);
+  await f.post("/gmail/reset");
+  await f.select("b43");
+  await f.action("approve");
+  await f.action("delegate");
+  assert.match(await f.action("read"), /Quarterly report/);
+  assert.doesNotMatch(await f.action("end-task"), /Quarterly report/);
+  assert.match(await f.action("read"), /read: DENIED/);
+  assert.equal(f.provider.counts.reads, 3);
+});
+
+test("Gmail console binds selections and runs to the authenticated session and rejects tampered controls", async (t) => {
+  const f = await gmailSetup(t);
+  const guest = f.browser();
+  assert.equal((await guest.send("/gmail")).location, "/login");
+  assert.equal(
+    (await guest.post("/gmail/load", { connection: f.connection.id })).response
+      .status,
+    403,
+  );
+  assert.equal(
+    (
+      await f.b.post(
+        "/gmail/load",
+        { connection: f.connection.id },
+        { origin: "https://attacker.example" },
+      )
+    ).response.status,
+    403,
+  );
+  assert.equal(f.provider.counts.lists, 0);
+  await f.load();
+  const selection = hiddenField(f.html(), "selection");
+  assert.equal(
+    (await f.b.post("/gmail/select", { selection, message: "deadbeef" }))
+      .location,
+    "/gmail?error=action",
+  );
+  await f.b.send("/gmail");
+  assert.equal(
+    (
+      await f.b.post("/gmail/select", {
+        selection,
+        message: "a42",
+        resource: "other",
+      })
+    ).response.status,
+    400,
+  );
+  await f.b.send("/gmail");
+  await f.select();
+  const run = hiddenField(f.html(), "run");
+  await f.action("approve");
+  await f.action("delegate");
+  const other = f.browser();
+  await other.login();
+  assert.equal(
+    (await other.post("/gmail/action", { run, action: "read" })).location,
+    "/gmail?error=action",
+  );
+  const another = await other.send("/gmail");
+  assert.doesNotMatch(another.html, /Quarterly report/);
+  assert.equal(f.provider.counts.reads, 0);
+  await f.b.post("/logout");
+  await f.b.login();
+  assert.equal(
+    (await f.b.post("/gmail/action", { run, action: "read" })).location,
+    "/gmail?error=action",
+  );
+  assert.equal(f.provider.counts.reads, 0);
+});
+
+test("Gmail console escapes provider text and drops old results on reset, disconnect, and restart", async (t) => {
+  const f = await gmailSetup(t);
+  f.provider.controls.messageSubject = '<img src=x onerror="alert(1)">';
+  await f.load();
+  await f.select();
+  await f.action("approve");
+  await f.action("delegate");
+  const read = await f.action("read");
+  assert.doesNotMatch(read, /<img src=x/);
+  assert.match(read, /&lt;img src=x/);
+  const oldRun = hiddenField(read, "run");
+  assert.doesNotMatch(await f.post("/gmail/reset"), /&lt;img src=x/);
+  assert.equal(
+    (await f.b.post("/gmail/action", { run: oldRun, action: "read" })).location,
+    "/gmail?error=action",
+  );
+  await f.b.send("/gmail");
+  await f.select();
+  await f.action("approve");
+  await f.action("delegate");
+  const run = hiddenField(f.html(), "run");
+  await f.b.post("/connections/disconnect", { id: f.connection.id });
+  const disconnected = await f.b.send("/gmail");
+  assert.doesNotMatch(disconnected.html, /&lt;img src=x/);
+  assert.equal(
+    (await f.b.post("/gmail/action", { run, action: "read" })).location,
+    "/gmail?error=action",
+  );
+  assert.equal(f.provider.counts.reads, 1);
+  await f.restart();
+  assert.equal((await f.b.send("/gmail")).location, "/login");
+});
+
+test("a Gmail selection finishing after sign-out cannot restore a session or grant access", async (t) => {
+  const f = await gmailSetup(t);
+  let arrived!: () => void;
+  let release!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    arrived = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  t.after(() => release());
+  f.provider.controls.beforeList = async () => {
+    arrived();
+    await gate;
+  };
+  const loading = f.b.post("/gmail/load", { connection: f.connection.id });
+  await entered;
+  await f.b.send("/gmail");
+  await f.b.post("/logout");
+  release();
+  await loading;
+  assert.equal((await f.b.send("/gmail")).location, "/login");
+  await f.b.login();
+  assert.doesNotMatch((await f.b.send("/gmail")).html, /name="selection"/);
+  assert.equal(f.provider.counts.reads, 0);
 });
