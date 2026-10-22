@@ -26,13 +26,15 @@ Public entries cover the core verifier/client, SQLite, HTTP, identity files, aut
 - The [isolated-worker reference check](../examples/isolation/README.md) passed Linux CI: signed calls work through a Unix socket while direct credential access, tampering, and external/provider networking fail. This does not validate a macOS desktop or arbitrary production host.
 - `npm run package:check`, after building, creates and inspects a tarball, installs it in a temporary consumer without dev dependencies, imports every public entry, checks consumer TypeScript imports, and invokes the installed CLI. It does not publish or configure registry access.
 
+The [provider validation runner](provider-validation.md), [deployment/recovery drill](deployment.md), [external review packet](security-review.md), and [release bundle procedure](release-runbook.md) make these gates repeatable and reviewable. Their existence is preparation, not external approval.
+
 ## State and operations
 
 SQLite schema version 1 migrates the known legacy layout transactionally. Unknown versions/layouts reject. A populated legacy store cannot be silently attached to a new authority. Keep identity and state backups together, restore with revocation rollback explicitly resolved, and never overwrite identity to recover from a startup error. Operator token rotation and authority replacement procedures are in the [service guide](service.md); transparent authority-key rotation is not implemented.
 
 Audit inspection returns bounded invocation outcomes and omits resource contents and credentials. It is not encrypted, tamper-evident, or a complete administration-change ledger. Define retention, disk monitoring, alerting, and recovery for each deployment. A durable async state backend and multi-replica consistency are separate future designs.
 
-Dependencies are pinned at the direct package boundary and locked for repository CI. Review updates for protocol, credential, HTTP, and database behavior; rerun the complete tests, examples, containment check, and package check before merging. npm audit output is supplementary evidence, not proof that a dependency is safe. The isolation Docker image currently follows the official Node 24 tag; a supported production image needs a reviewed digest and update process.
+Dependencies are pinned at the direct package boundary and locked for repository CI. Review updates for protocol, credential, HTTP, and database behavior; rerun the complete tests, examples, containment check, and package check before merging. npm audit output is supplementary evidence, not proof that a dependency is safe. The isolation Docker image pins an official Node 24 OCI index digest. Review digest updates and rerun containment/recovery checks; a production image still requires its own update and vulnerability-response process.
 
 ## Publication gates still open
 

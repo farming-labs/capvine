@@ -109,6 +109,13 @@ Operate the same OSS verifier with hosted storage, tenant provisioning, identity
 
 **Exit criteria:** demand from OSS adopters, a supported production boundary, tested tenant isolation/recovery, and clear ownership of keys, data export, and incident response.
 
+## Release validation tools — implemented
+
+- [x] A repeatable [live-provider check](provider-validation.md) for selected Google/Slack reads through a separate MCP worker, restart, raw retargeting denial, parent revocation, and workflow disable. Provider rejection probes distinguish reconnect-required state from temporary failures. Fixture tests validate the runner; actual provider results remain separate evidence.
+- [x] A [recovery drill and deployment runbook](deployment.md) covering cold backups, stale-state rollback, fresh-authority recovery, operator-token rotation, identity/state mismatch, and concurrent ownership. The Linux containment check now includes persistent state and revocation across restarts, with a pinned image digest.
+- [x] An [external security/API review packet](security-review.md) defining the candidate, trust boundaries, review questions, and required reviewer evidence. An actual independent review remains open.
+- [x] A [checked package review bundle](release-runbook.md) with source revision, artifact digests, fresh-consumer tests, and a read-only manual CI workflow. Registry publishing remains disabled pending review and deployment acceptance.
+
 ## Recommended next milestone
 
 Complete the [external review and publication gates](https://github.com/farming-labs/capvine/issues/16) for the read-only OSS milestone. The local service, adapters, live public GitHub read, provisioned MCP bridge, constrained reference-container isolation, and package checks are implemented. Production-host containment and operations, independent review, and publication still need their own evidence. Broader private-provider validation and remote multi-tenant administration/MCP sessions remain separate integration work. The direct account manager, authenticated local account console, and saved approval API are implemented; their fixture evidence does not close those gates. The session-bound Gmail read UI and local live Google smoke check are delivered. Reusable workflow approval and external worker provisioning are implemented. The next milestones are provider-revocation and production-host validation. Keep those gates open until they are actually satisfied.

@@ -20,10 +20,13 @@ The test proves, in this deployment:
 
 - The worker can read the assigned provider record through the verified invocation path.
 - A raw signed request for another resource is denied.
+- Persistent state retains an allowed grant across restart and a revoked grant remains denied across later restarts.
 - Authority/provider configuration and the Docker socket cannot be read.
 - The image and worker provisioning mounts cannot be modified.
 - The worker has no non-loopback network interface and cannot contact the provider directly or connect to an external IP.
 
-The authority calls a simulated credentialed provider on a separate internal network. The provider data and credentials are temporary fixtures; this is not a private GitHub account test. The Unix socket is a local transport for the existing serialized invocation API, not a new capability protocol. The authority in this containment fixture uses memory state and has no grant-administration surface. Persistent-state/restart behavior is tested separately by the resource-server example.
+The authority calls a simulated credentialed provider on a separate internal network. The provider data and credentials are temporary fixtures; this is not a private GitHub account test. The Unix socket is a local transport for the existing serialized invocation API, not a new capability protocol. The authority keeps SQLite permission state in its private volume and has no grant-administration surface. A protected operator command runs only while the authority is stopped, takes the same exclusive lock, and revokes the fixture root. The script verifies the original grant after a normal restart, then verifies its rejection across two restarts after revocation. A lost process lock is not automatically removed after a crash; inspect the stopped process before operator recovery. The health check probes the HTTP handler over the Unix socket rather than trusting socket-file existence.
 
 This validates a constrained reference boundary, not arbitrary container security or a complete production deployment. Docker/host administrators, the kernel, image supply chain, authority code, and provider remain trusted. The example does not test container escapes, browser/computer-use isolation, public TLS ingress, or a specific production host. Adding networking, mounts, shared process namespaces, privileged tools, or broader credentials changes the boundary and requires new tests. On macOS, Docker uses its Linux virtualization environment; these checks do not isolate a separately controlled macOS desktop.
+
+The Node image is pinned by OCI index digest. Update that pin through a reviewed PR and rerun containment and recovery checks; a digest fixes the selected image but does not establish that its contents are secure.

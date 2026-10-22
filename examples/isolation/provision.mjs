@@ -1,11 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { chmod, chown, writeFile } from "node:fs/promises";
-import {
-  createAuthority,
-  encodeGrant,
-  identity,
-  MemoryStore,
-} from "../../dist/index.js";
+import { createAuthority, encodeGrant, identity } from "../../dist/index.js";
+import { SqliteStore } from "../../dist/sqlite.js";
 
 const authority = await identity.generate();
 const worker = await identity.generate();
@@ -17,7 +13,9 @@ const resource = {
   target: { id: "fixed" },
 };
 const task = { id: "fixture-job", ownerId: "fixture-owner", active: true };
-const store = new MemoryStore();
+await writeFile("/authority/state.db", "", { flag: "wx", mode: 0o600 });
+const store = new SqliteStore("/authority/state.db");
+store.bindService(authority.did(), "fixture-owner");
 store.addResource(resource);
 store.addTask(task);
 const issuer = createAuthority({
@@ -39,6 +37,9 @@ const grant = await issuer.issue({
   expiresAt: new Date(Date.now() + 900_000),
 });
 const encoded = Buffer.from(await encodeGrant(grant)).toString("base64");
+const root = store.getGrant(grant.cid.toString());
+store.close();
+await chown("/authority/state.db", 10001, 10000);
 for (const [directory, uid, config] of [
   [
     "/authority",
@@ -48,7 +49,7 @@ for (const [directory, uid, config] of [
       token,
       resource,
       task,
-      root: store.getGrant(grant.cid.toString()),
+      root,
     },
   ],
   ["/provider", 10003, { token }],

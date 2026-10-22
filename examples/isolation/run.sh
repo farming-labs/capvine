@@ -7,3 +7,13 @@ trap 'compose down --volumes --remove-orphans' EXIT
 compose build
 compose up -d --wait authority
 compose run --rm --no-deps worker
+compose stop authority
+compose up -d --no-deps --wait authority
+compose run --rm --no-deps worker
+compose stop authority
+compose run --rm --no-deps authority node examples/isolation/revoke.mjs
+compose up -d --no-deps --wait authority
+compose run --rm --no-deps worker node examples/isolation/worker.mjs --expect-denied
+compose stop authority
+compose up -d --no-deps --wait authority
+compose run --rm --no-deps worker node examples/isolation/worker.mjs --expect-denied
