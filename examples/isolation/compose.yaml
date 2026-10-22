@@ -45,7 +45,7 @@ services:
     user: "10001:10000"
     command: [node, examples/isolation/authority.mjs]
     networks: [provider]
-    volumes: ["authority:/authority:ro", "socket:/socket"]
+    volumes: ["authority:/authority", "socket:/socket"]
     depends_on:
       provider: { condition: service_healthy }
     healthcheck:
@@ -54,7 +54,7 @@ services:
           CMD,
           node,
           -e,
-          "process.exit(require('node:fs').statSync('/socket/invoke.sock').isSocket()?0:1)",
+          "const r=require('node:http').request({socketPath:'/socket/invoke.sock',path:'/',method:'GET'},r=>process.exit(r.statusCode===404?0:1));r.on('error',()=>process.exit(1));r.setTimeout(2000,()=>process.exit(1));r.end()",
         ]
       interval: 1s
       timeout: 3s

@@ -1,13 +1,13 @@
-import { chmod, readFile } from "node:fs/promises";
+import { chmod, open, readFile, unlink } from "node:fs/promises";
 import { createServer } from "node:http";
-import { createAuthority, identity, MemoryStore } from "../../dist/index.js";
+import { createAuthority, identity } from "../../dist/index.js";
 import { createHttpHandler } from "../../dist/http.js";
+import { SqliteStore } from "../../dist/sqlite.js";
 
 const config = JSON.parse(await readFile("/authority/config.json", "utf8"));
-const store = new MemoryStore();
-store.addResource(config.resource);
-store.addTask(config.task);
-store.addGrant(config.root);
+const lock = await open("/authority/process.lock", "wx", 0o600);
+const store = new SqliteStore("/authority/state.db");
+store.bindService(identity.parse(config.signer).did(), "fixture-owner");
 const authority = createAuthority({
   signer: identity.parse(config.signer),
   store,
@@ -32,4 +32,10 @@ const server = createServer(createHttpHandler({ execute: authority.execute }));
 server.listen("/socket/invoke.sock", async () => {
   await chmod("/socket/invoke.sock", 0o660);
 });
-process.once("SIGTERM", () => server.close());
+process.once("SIGTERM", () =>
+  server.close(async () => {
+    store.close();
+    await lock.close();
+    await unlink("/authority/process.lock");
+  }),
+);

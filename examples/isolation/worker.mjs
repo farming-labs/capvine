@@ -63,10 +63,13 @@ const transport = (bytes) =>
     outgoing.end(bytes);
   });
 const client = createClient({ signer, service, transport });
-assert.deepEqual(await client.invoke(grant), {
-  id: "fixed",
-  title: "Isolated provider result",
-});
+const denied = process.argv[2] === "--expect-denied";
+if (denied) await assert.rejects(client.invoke(grant), PermissionDenied);
+else
+  assert.deepEqual(await client.invoke(grant), {
+    id: "fixed",
+    title: "Isolated provider result",
+  });
 const forged = await invoke({
   issuer: signer,
   audience: service,
@@ -77,6 +80,7 @@ const forged = await invoke({
 await assert.rejects(transport(await encodeGrant(forged)), PermissionDenied);
 for (const path of [
   "/authority/config.json",
+  "/authority/state.db",
   "/provider/config.json",
   "/var/run/docker.sock",
 ])
@@ -108,5 +112,5 @@ await assert.rejects(
   }),
 );
 console.log(
-  "Allowed invocation passed; escalation, credential access, filesystem tampering, provider bypass, and external network access were rejected.",
+  `${denied ? "Revoked invocation rejected" : "Allowed invocation passed"}; escalation, credential access, filesystem tampering, provider bypass, and external network access were rejected.`,
 );

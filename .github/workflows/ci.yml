@@ -22,6 +22,7 @@ jobs:
       - run: npm run check
       - run: npm run example
       - run: npm run example:service
+      - run: npm run example:recovery
       - run: npm run example:mcp
       - run: npm run example:resources
       - run: npm run package:check

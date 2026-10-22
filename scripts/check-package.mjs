@@ -1,13 +1,30 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  copyFile,
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const run = promisify(execFile);
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const args = process.argv.slice(2);
+if (args.length && (args.length !== 2 || args[0] !== "--output" || !args[1]))
+  throw new Error(
+    "Usage: node scripts/check-package.mjs [--output <new-directory-outside-checkout>]",
+  );
+const output = args[1] ? resolve(args[1]) : undefined;
+if (output && !relative(root, output).startsWith("../"))
+  throw new Error("Review bundles must be outside the source checkout");
 const temporary = await mkdtemp(join(tmpdir(), "capvine-package-"));
 try {
   const { stdout } = await run(
@@ -99,6 +116,52 @@ try {
   console.log(
     `Packed artifact verified: ${entries.length} runtime/type entry points and installed CLI; no source fixtures or state files included.`,
   );
+  if (output) {
+    const archive = await readFile(join(temporary, packed.filename));
+    const { stdout: revision } = await run("git", ["rev-parse", "HEAD"], {
+      cwd: root,
+    });
+    const { stdout: status } = await run("git", ["status", "--porcelain"], {
+      cwd: root,
+    });
+    const evidence = {
+      format: "capvine.package-review.v1",
+      revision: revision.trim(),
+      cleanCheckout: status.trim().length === 0,
+      generatedAt: new Date().toISOString(),
+      node: process.version,
+      name: manifest.name,
+      version: manifest.version,
+      private: manifest.private === true,
+      archive: packed.filename,
+      sha256: createHash("sha256").update(archive).digest("hex"),
+      integrity: `sha512-${createHash("sha512").update(archive).digest("base64")}`,
+      checked: {
+        archiveContents: true,
+        freshInstallation: true,
+        runtimeEntries: entries,
+        consumerTypes: true,
+        installedCli: true,
+      },
+      publicationApproved: false,
+      limits:
+        "Package checks only. Independent review, provider/host evidence, registry trust, and publication are not established by this bundle.",
+    };
+    await mkdir(output, { mode: 0o700 });
+    await copyFile(
+      join(temporary, packed.filename),
+      join(output, packed.filename),
+    );
+    await chmod(join(output, packed.filename), 0o600);
+    await writeFile(
+      join(output, "package-review.json"),
+      `${JSON.stringify(evidence, null, 2)}\n`,
+      { flag: "wx", mode: 0o600 },
+    );
+    console.log(
+      "Review bundle saved; publication is not approved by these checks.",
+    );
+  }
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

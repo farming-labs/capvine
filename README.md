@@ -60,6 +60,7 @@ npm run example:service
 npm run example:resources
 npm run example:accounts
 npm run example:slack
+npm run example:recovery
 ```
 
 The first example creates a permission for A, delegates it to B, reads one fixture issue, and demonstrates that revoking A's grant stops B's next call. No external account or model API key is needed.
@@ -139,6 +140,8 @@ The [saved workflow guide](docs/workflow-approvals.md) shows how to approve an e
 Run `npm run console:workflows` for the [workflow approval console](docs/workflow-console.md), which connects saved owner approvals to real separate workers reading a local example file.
 
 The [worker provisioning guide](docs/workers.md) connects those approvals to separate worker processes through `provisionWorker`, `renewWorker`, and `capvine worker`. Run `npm run example:mcp` to read a real file, restart the authority, renew a running worker, and disable its workflow.
+
+The [provider validation command](docs/provider-validation.md) runs a selected real message through a separate MCP worker and checks restart and local revocation without printing its contents. The [deployment and recovery runbook](docs/deployment.md), [external review packet](docs/security-review.md), and [release bundle procedure](docs/release-runbook.md) prepare the remaining release gates; they do not mark those gates complete.
 
 ## Persist state
 

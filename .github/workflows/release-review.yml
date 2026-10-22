@@ -1,0 +1,38 @@
+name: Release review bundle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CAPVINE_REVIEW_DIR: ${{ runner.temp }}/capvine-review
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: sudo apt-get update && sudo apt-get install -y postgresql
+      - run: npm run check
+      - run: npm run example
+      - run: npm run example:service
+      - run: npm run example:recovery
+      - run: npm run example:resources
+      - run: npm run example:mcp
+      - run: npm run example:accounts
+      - run: npm run example:slack
+      - run: sh examples/isolation/run.sh
+      - run: npm run release:bundle -- "$CAPVINE_REVIEW_DIR"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: capvine-review-${{ github.sha }}
+          path: ${{ runner.temp }}/capvine-review
+          if-no-files-found: error
+          retention-days: 14
