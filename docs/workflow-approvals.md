@@ -79,7 +79,7 @@ const approval = await admin.readApproval("daily-report");
 await admin.disableApproval("daily-report");
 ```
 
-Application code schedules runs and delivers each grant. This API does not install a scheduler, watch token expiry, or present an approval screen.
+Application code schedules runs and delivers each grant. This core API does not install a scheduler, watch token expiry, or present an approval screen. The optional [workflow console](workflow-console.md) adds that owner UI and a bounded renewal loop through the same API.
 
 Use the [worker provisioning API](workers.md) to create a private assignment for a separate worker and replace its proof after fresh issuance. Running MCP and direct workers reload the proof without changing their resource, action, task, service, or signing identity. `npm run example:mcp` demonstrates saved approvals, service restart, and renewal against a real file.
 
@@ -103,4 +103,4 @@ The operator API remains broadly privileged for one configured owner. It can cre
 
 `test/approvals.test.ts` covers exact bindings, raw signed escalation requests, expiry, child invalidation, owner boundaries, storage failure, atomic creation, and issuance racing with disable. `test/service.test.ts` covers authenticated commands, field substitution, resource removal, persistence, and disable across restart.
 
-Run the [direct account demonstration](accounts.md) for an OAuth/OIDC provider fixture, persistent credential and authorization stores, and a separate worker process. It demonstrates code exchange, refresh, one approval reused after restart, account identity substitution rejection, and disabling existing grants. The [account console](account-console.md) adds a session-bound Gmail selection and approval test; configured live Google consent, refresh, and delegated reads have also been checked. A reusable workflow approval UI, provider-consent revocation validation, arbitrary Gmail selection, writes, and production isolation remain separate work.
+Run the [direct account demonstration](accounts.md) for an OAuth/OIDC provider fixture, persistent credential and authorization stores, and a separate worker process. It demonstrates code exchange, refresh, one approval reused after restart, account identity substitution rejection, and disabling existing grants. The [account console](account-console.md) adds a session-bound Gmail selection and approval test; configured live Google consent, refresh, and delegated reads have also been checked. The [workflow console](workflow-console.md) supplies a reusable approval UI and external worker provisioning. Provider-consent revocation validation, arbitrary Gmail selection, writes, and production isolation remain separate work.

@@ -164,6 +164,15 @@ export function createAdministrationHandler(options: {
           result = await grantResponse(grant);
           break;
         }
+        case "approval.list": {
+          if (!options.approvals)
+            throw new RequestError(400, "Approvals are unavailable");
+          const p = fields(command.params, ["after", "limit"]);
+          if (typeof p.after !== "string" || typeof p.limit !== "number")
+            throw new RequestError(400, "Invalid listing");
+          result = options.approvals.list({ after: p.after, limit: p.limit });
+          break;
+        }
         case "approval.create": {
           if (!options.approvals)
             throw new RequestError(400, "Approvals are unavailable");
@@ -322,6 +331,11 @@ export function createAdministrationClient(options: {
       return parseGrantResponse(await call("approval.issue", { id }));
     },
     readApproval: (id: string) => call("approval.read", { id }),
+    listApprovals: (input: { after?: string; limit?: number } = {}) =>
+      call("approval.list", {
+        after: input.after ?? "",
+        limit: input.limit ?? 20,
+      }),
     disableApproval: (id: string) => call("approval.disable", { id }),
     revoke: (id: string) => call("grant.revoke", { id }),
     endTask: (id: string) => call("task.end", { id }),
