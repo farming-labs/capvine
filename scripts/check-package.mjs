@@ -159,6 +159,7 @@ try {
     import { createCapvine } from "@farming-labs/capvine/setup";
     import { filesystem } from "@farming-labs/capvine/plugins";
     import { createCapvineClient } from "@farming-labs/capvine/client";
+    import { createOwnerConsole } from "@farming-labs/capvine/owner-console";
     const root = ${JSON.stringify(temporary)};
     const baseURL = "http://127.0.0.1:8796";
     const options = {
@@ -173,6 +174,12 @@ try {
     try {
       const resource = await owner.resources.register({ type: "fs.file", target: { path: "report.txt" } });
       const signer = await identity.generate();
+      const console = createOwnerConsole({ app, baseURL, providers: [], plugins: [{ id: "reports", label: "Reports", type: "fs.file" }], recipients: [{ label: "Consumer worker", audience: signer.did() }] });
+      for (const path of ["/capvine", "/capvine/style.css", "/capvine/assets/owner-console-browser.js", "/capvine/assets/owner-client.js", "/capvine/assets/application-contract.js"]) {
+        const response = await console(new Request(baseURL + path, { headers: { cookie: "test=owner" } }));
+        assert.equal(response.status, 200); assert.ok((await response.text()).length > 100);
+      }
+      assert.equal((await console(new Request(baseURL + "/capvine"))).status, 401);
       const issued = await owner.grants.issue({ resource: resource.id, action: "fs/read", audience: signer.did() });
       const grant = await decodeGrant(Buffer.from(issued.grant, "base64"));
       const worker = createClient({ signer, service: identity.Verifier.parse(issued.service), transport: async bytes => {

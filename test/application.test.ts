@@ -1075,3 +1075,110 @@ test("automatic renewal delivers fresh grants serially and stops on disable, abo
   });
   assert.equal(count, 1);
 });
+
+test("owner discovery lists bounded choices without registering resources or authorizing workers", async (t) => {
+  const f = await fixture(t);
+  assert.equal(
+    (
+      await f.raw(
+        "resources/discover",
+        { plugin: "reports" },
+        { ...f.headers, cookie: "" },
+      )
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await f.raw(
+        "resources/discover",
+        { plugin: "reports" },
+        { ...f.headers, origin: "https://attacker.example" },
+      )
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await f.raw("resources/discover", { plugin: "reports", root: "/" }))
+      .status,
+    400,
+  );
+  await symlink(join(f.data, "one.txt"), join(f.data, "hidden-link.txt"));
+  const files = await f.client.resources.discover({ plugin: "reports" });
+  assert.deepEqual(
+    files.items.map((item) => item.target.path),
+    ["one.txt", "two.txt"],
+  );
+  assert.deepEqual((await f.client.resources.list()).resources, []);
+  const connectionId = await f.connect();
+  const reads = f.provider.counts.reads;
+  const messages = await f.app.api.resources.discover({
+    headers: f.headers,
+    body: { plugin: "gmail", connectionId },
+  });
+  assert.deepEqual(
+    messages.items.map((item) => item.target.messageId),
+    ["a42", "b43"],
+  );
+  assert.equal(f.provider.counts.reads, reads + 2);
+  for (const secret of f.provider.secrets())
+    assert.equal(JSON.stringify(messages).includes(secret), false);
+  assert.deepEqual((await f.client.resources.list()).resources, []);
+  await f.client.connections.disconnect({ connectionId });
+  await assert.rejects(
+    f.client.resources.discover({ plugin: "gmail", connectionId }),
+    denied(403),
+  );
+  await assert.rejects(
+    f.client.resources.discover({
+      plugin: "gmail",
+      connectionId: "someone-else",
+    }),
+  );
+});
+
+test("custom discovery rejects oversized pages and projects only selectable targets", async (t) => {
+  const f = await fixture(t);
+  const base = filesystem({ id: "reports", root: f.data });
+  await f.restart({
+    ...f.options,
+    plugins: [
+      definePlugin({
+        ...base,
+        discover: () => ({
+          items: [
+            {
+              label: "One",
+              target: { path: "one.txt" },
+              internal: "not-for-client",
+            },
+          ],
+          nextCursor: null,
+        }),
+      }),
+    ],
+  });
+  assert.deepEqual(await f.client.resources.discover({ plugin: "reports" }), {
+    items: [{ label: "One", target: { path: "one.txt" } }],
+    nextCursor: null,
+  });
+  await f.restart({
+    ...f.options,
+    plugins: [
+      definePlugin({
+        ...base,
+        discover: () => ({
+          items: Array.from({ length: 26 }, () => ({
+            label: "One",
+            target: { path: "one.txt" },
+          })),
+          nextCursor: null,
+        }),
+      }),
+    ],
+  });
+  await assert.rejects(
+    f.client.resources.discover({ plugin: "reports" }),
+    denied(400),
+  );
+});

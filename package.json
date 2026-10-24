@@ -32,7 +32,8 @@
     "example:recovery": "tsx examples/recovery.ts",
     "provider:check": "tsx examples/provider-validation/main.ts",
     "release:bundle": "npm run build && node scripts/check-package.mjs --output",
-    "example:application": "tsx examples/application/demo.ts"
+    "example:application": "tsx examples/application/demo.ts",
+    "console:application": "npm run build && tsx examples/application/console.ts"
   },
   "exports": {
     "./setup": {
@@ -142,6 +143,10 @@
     "./node": {
       "types": "./dist/node.d.ts",
       "default": "./dist/node.js"
+    },
+    "./owner-console": {
+      "types": "./dist/owner-console.d.ts",
+      "default": "./dist/owner-console.js"
     }
   },
   "files": [

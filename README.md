@@ -77,6 +77,8 @@ The [network example](examples/network/README.md) runs an authority, coordinator
 
 Start with the [application API guide](docs/application.md): configure providers and plugins once, mount `capvine.handler`, then use `createCapvineClient()` to connect accounts, register selected resources, issue grants, and revoke access. `npm run example:application` exercises OAuth, exact-resource registration, separate-process delegation, restart, and revocation over HTTP with a local provider fixture. The application supplies verified owner sessions. This remains a single-owner read-only prototype; independent security review and production validation remain open.
 
+The optional [owner permission workspace](docs/owner-console.md) adds resource selection and explicit saved-workflow approval using the same authenticated API. Gmail and filesystem discovery are built in; custom plugins can supply choices. Try `npm run console:application` with its clearly labeled disposable fixtures.
+
 The existing [fixed-resource setup API](docs/plugins.md) remains available for `createCapvine({ directory, providers, resources, workflows })`, including saved approvals, worker provisioning, and renewal. Its custom OIDC/MCP example is `npm run example:plugins`. Plugins in both APIs are explicitly imported trusted backend code.
 
 The server runs in protected application code. Your application supplies its authenticated actor, resource registry, operation handlers, secret management, and owner policy.
