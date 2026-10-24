@@ -39,10 +39,11 @@ Implemented:
 - A Slack PKCE account provider with rotating user tokens and exact conversation/message reads, validated against an HTTP fixture.
 - An authenticated local account console with OAuth callbacks, connection management, session/CSRF controls, and an opt-in Gmail delegation test screen.
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
+- An application API with authenticated owner routes, a typed client, runtime resource registration, and persistent grant revocation.
 - A plugin setup API with provider/resource factories, persistent initialization, and a connect-before-register workflow.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
-Not implemented: a production service deployment, multi-user/remote account management, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. Direct account connection and refresh are tested against a local OAuth/OIDC provider fixture; a configured local Google smoke test has also verified consent, refresh, delegated reads, restart, and revocation. Provider-consent revocation and production isolation remain unverified. The live GitHub example uses public data.
+Not implemented: a production service deployment, multi-user account management, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. Direct account connection and refresh are tested against a local OAuth/OIDC provider fixture; a configured local Google smoke test has also verified consent, refresh, delegated reads, restart, and revocation. Provider-consent revocation and production isolation remain unverified. The live GitHub example uses public data.
 
 The [resource server command](docs/server-command.md) combines both adapters. Run `npm run example:resources` for the full separate-process demonstration, including revocation and restart. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state. The [roadmap](docs/roadmap.md) and [release readiness checklist](docs/release-readiness.md) retain the remaining external review, production deployment, and publication gates.
 
@@ -62,6 +63,7 @@ npm run example:resources
 npm run example:accounts
 npm run example:slack
 npm run example:plugins
+npm run example:application
 npm run example:recovery
 ```
 
@@ -73,7 +75,9 @@ The [network example](examples/network/README.md) runs an authority, coordinator
 
 ## The developer integration
 
-Start with the [plugin setup guide](docs/plugins.md) for `createCapvine({ providers: [google(options)], resources: [gmail(options)], workflows: [workflow(options)] })`. It composes the existing components, initializes private state on first use, and reuses keys and approvals on restart. `npm run example:plugins` exercises a custom OIDC provider and resource through a separate MCP worker, including renewal and persistent disable. It uses a local fixture, not a real account. Plugins are explicitly imported trusted server code; independent security and adopter API reviews remain open.
+Start with the [application API guide](docs/application.md): configure providers and plugins once, mount `capvine.handler`, then use `createCapvineClient()` to connect accounts, register selected resources, issue grants, and revoke access. `npm run example:application` exercises OAuth, exact-resource registration, separate-process delegation, restart, and revocation over HTTP with a local provider fixture. The application supplies verified owner sessions. This remains a single-owner read-only prototype; independent security review and production validation remain open.
+
+The existing [fixed-resource setup API](docs/plugins.md) remains available for `createCapvine({ directory, providers, resources, workflows })`, including saved approvals, worker provisioning, and renewal. Its custom OIDC/MCP example is `npm run example:plugins`. Plugins in both APIs are explicitly imported trusted backend code.
 
 The server runs in protected application code. Your application supplies its authenticated actor, resource registry, operation handlers, secret management, and owner policy.
 

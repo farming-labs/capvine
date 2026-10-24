@@ -49,3 +49,9 @@ The repository tests explicit negative cases: changed resources, operations, tas
 ## Reporting
 
 Use GitHub's private vulnerability reporting for this repository when available. Avoid public issues containing credentials or exploit details for deployments using this prototype. For ordinary non-sensitive bugs, open an issue with a minimal reproduction.
+
+## Application handler and runtime registration
+
+The application API accepts a trusted `authenticate(Request)` integration; it must verify the real login session and return its owner and individual session ID. Request-supplied owner IDs, worker proofs, and model decisions cannot replace that integration. Owner operations enforce the configured owner, exact same-origin mutation requests, and a custom request header; OAuth callbacks bind to the authenticated login session and stored state. The worker invocation route always uses signed capability verification. `capvine.api` calls share the HTTP handler's checks.
+
+Runtime plugins are privileged adapters. Registrations are immutable and persist alongside permission state; configuration changes and replaced file identities cannot silently redirect old grants. Missing or disconnected accounts reject dependent requests. The new API does not add multi-tenancy, automatic permission renewal, write/replay semantics, a production owner UI, or provider consent revocation. The session in the executable example is only a fixture. Follow [the application guide](docs/application.md) for limits, state custody and host responsibilities.

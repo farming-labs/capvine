@@ -31,7 +31,8 @@
     "playground": "tsx examples/delegation-playground/main.ts",
     "example:recovery": "tsx examples/recovery.ts",
     "provider:check": "tsx examples/provider-validation/main.ts",
-    "release:bundle": "npm run build && node scripts/check-package.mjs --output"
+    "release:bundle": "npm run build && node scripts/check-package.mjs --output",
+    "example:application": "tsx examples/application/demo.ts"
   },
   "exports": {
     "./setup": {
@@ -129,6 +130,18 @@
     "./account-console": {
       "types": "./dist/account-console.d.ts",
       "default": "./dist/account-console.js"
+    },
+    "./client": {
+      "types": "./dist/owner-client.d.ts",
+      "default": "./dist/owner-client.js"
+    },
+    "./plugins": {
+      "types": "./dist/plugins.d.ts",
+      "default": "./dist/plugins.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
     }
   },
   "files": [

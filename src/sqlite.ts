@@ -136,6 +136,46 @@ export class SqliteStore implements ApprovalStore {
   getResource(id: string): Resource | undefined {
     return this.#get("resource", id);
   }
+  registerResource(resource: Resource, registration: unknown): void {
+    this.#db.exec("BEGIN IMMEDIATE");
+    try {
+      this.addResource(resource);
+      this.#add("registration", resource.id, registration);
+      this.#db.exec("COMMIT");
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+  bindApplication(origin: string, ownerId: string): void {
+    const binding = JSON.stringify({ version: 1, origin, ownerId });
+    const row = this.#db
+      .prepare("SELECT value FROM capvine_metadata WHERE id = 'application'")
+      .get();
+    if (row) {
+      if (row.value !== binding)
+        throw new Error("Application belongs to another origin or owner");
+      return;
+    }
+    const count = this.#db
+      .prepare(
+        "SELECT count(*) AS count FROM capvine_records WHERE kind = 'registration'",
+      )
+      .get();
+    if (Number(count!.count) !== 0)
+      throw new Error("Existing registrations require an application binding");
+    this.#db
+      .prepare("INSERT INTO capvine_metadata VALUES ('application', ?)")
+      .run(binding);
+  }
+  registrations(): unknown[] {
+    return this.#db
+      .prepare(
+        "SELECT value FROM capvine_records WHERE kind = 'registration' ORDER BY id LIMIT 257",
+      )
+      .all()
+      .map((row) => JSON.parse(String(row.value)) as unknown);
+  }
   addTask(task: Task): void {
     this.#add("task", task.id, task);
   }
