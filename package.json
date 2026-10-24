@@ -33,7 +33,9 @@
     "provider:check": "tsx examples/provider-validation/main.ts",
     "release:bundle": "npm run build && node scripts/check-package.mjs --output",
     "example:application": "tsx examples/application/demo.ts",
-    "console:application": "npm run build && tsx examples/application/console.ts"
+    "console:application": "npm run build && tsx examples/application/console.ts",
+    "deployment:check": "tsx examples/deployment/main.ts",
+    "release:status": "tsx examples/release/main.ts"
   },
   "exports": {
     "./setup": {
