@@ -42,6 +42,8 @@ Attacker-controlled inputs include prompts, provider content, workers, tool argu
 
 Prioritize exploitable bypasses and durable failure modes over code-style feedback. Use raw signed requests and observable handler/provider counters when reporting authorization findings. Do not send personal account contents or real keys in a reproduction. Follow [SECURITY.md](../SECURITY.md) for disclosure.
 
+Include owner discovery and `src/owner-console.ts` / `src/owner-console-browser.ts`. Confirm discovery authenticates before touching providers, does not grant access, bounds and projects results, and validates targets again during registration. Inspect text rendering of provider labels, fixed browser asset paths, session checks on assets, CSP, exact approval review, and the separation between owner UI and worker assignment. Custom discovery is privileged code.
+
 ## Adopter API review
 
 Begin with the [application API guide](application.md): configure plugins, integrate a verified owner session, mount the handler, connect an account, register an exact resource, and grant access to a worker. Verify whether adopters understand `storage.directory`, account connection versus grant issuance, recipient identities, and immutable selection. Compare with the compatible fixed-resource setup guide for saved workflows and renewal. Record actual adopter feedback; these guides are not that feedback.

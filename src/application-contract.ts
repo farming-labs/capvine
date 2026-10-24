@@ -45,7 +45,16 @@ export interface SavedWorkflow {
   active: boolean;
 }
 
+export interface ResourceChoices {
+  items: { label: string; target: Record<string, Json> }[];
+  nextCursor: string | null;
+}
+
 export interface ApplicationCommands {
+  "resources/discover": {
+    input: { plugin: string; connectionId?: string; after?: string };
+    output: ResourceChoices;
+  };
   "connections/connect": {
     input: { provider: string; returnTo?: string };
     output: { connectionId: string; url: string };

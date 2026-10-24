@@ -16,6 +16,7 @@ export type {
   RegisterResourceInput,
   IssuedGrant,
   SavedWorkflow,
+  ResourceChoices,
 } from "./application-contract.ts";
 
 export function createCapvineClient(options: {
@@ -77,6 +78,8 @@ export function createCapvineClient(options: {
         call("connections/disconnect", input),
     },
     resources: {
+      discover: (input: CommandInput<"resources/discover">) =>
+        call("resources/discover", input),
       register: (input: CommandInput<"resources/register">) =>
         call("resources/register", input),
       list: (input: CommandInput<"resources/list"> = {}) =>
