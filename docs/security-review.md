@@ -15,6 +15,7 @@ npm run example:mcp
 npm run example:accounts
 npm run example:slack
 npm run example:plugins
+npm run example:application
 npm run example:recovery
 sh examples/isolation/run.sh
 ```
@@ -23,7 +24,9 @@ Use Node 24+, PostgreSQL server binaries, a non-root test user, and Linux Docker
 
 ## Review scope
 
-Include the plugin composition in `src/setup.ts`, `src/providers.ts`, `src/resources.ts` and `src/workflow-definition.ts`. Review first-run initialization, missing-key/state rejection, concurrent ownership, plugin cleanup, and dispatch when several plugins share an action. Confirm configuration never approves itself and that account connection remains independent of resource registration and grant issuance. Run `test/setup.test.ts` and the custom-provider example; use the integration steps and reviewer questions in [the plugin guide](plugins.md). Plugins and their dependencies execute with backend privileges.
+Include the plugin composition in `src/setup.ts`, `src/setup-internal.ts`, `src/providers.ts`, `src/resources.ts` and `src/workflow-definition.ts`. Review first-run initialization, missing-key/state rejection, concurrent ownership, plugin cleanup, and dispatch when several plugins share an action. Confirm configuration never approves itself and that account connection remains independent of resource registration and grant issuance. Run `test/setup.test.ts` and the custom-provider example; use the integration steps and reviewer questions in [the plugin guide](plugins.md). Plugins and their dependencies execute with backend privileges.
+
+Include the runtime application boundary in `src/application.ts`, `src/application-contract.ts`, `src/plugins.ts`, `src/owner-client.ts`, and `src/node.ts`. Check that HTTP and direct API methods enforce the same owner/session/origin rules; worker proofs cannot authorize owner operations; callback state cannot cross login sessions; and persistent plugin/resource bindings cannot be silently replaced. Review registration failures and shutdown races, explicit plugin selection, secret-free response envelopes, and the browser-only client dependency graph. Run `test/application.test.ts` and `npm run example:application`.
 
 | Boundary                       | Sources                                                                                                   | Questions to resolve                                                                                                                                                                                        |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -41,7 +44,7 @@ Prioritize exploitable bypasses and durable failure modes over code-style feedba
 
 ## Adopter API review
 
-Begin with `createCapvine` and factory arrays from the plugin guide. Compare the one-call setup for existing connections with the two-phase connect-then-register flow. Verify whether users understand `directory` as persistent backend state, `encryptionKey` as an optional externally managed credential key, immutable resource IDs, and the need to restart for configuration changes. Record actual adopter feedback; the guide itself is not that feedback.
+Begin with the [application API guide](application.md): configure plugins, integrate a verified owner session, mount the handler, connect an account, register an exact resource, and grant access to a worker. Verify whether adopters understand `storage.directory`, account connection versus grant issuance, recipient identities, and immutable selection. Compare with the compatible fixed-resource setup guide for saved workflows and renewal. Record actual adopter feedback; these guides are not that feedback.
 
 Ask application developers to integrate from the packed artifact rather than source aliases. Exercise one exact file/database record and one provider-backed message, assign a child worker, reuse a saved approval after restart, renew a worker, revoke a parent, and disable the workflow. Record where they confused account connection with permission issuance, resource IDs with provider targets, or token refresh with grant renewal. Check runtime/type imports and the installed CLI without workspace dev dependencies.
 

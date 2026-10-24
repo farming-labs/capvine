@@ -147,8 +147,50 @@ try {
     ],
     { cwd: consumer },
   );
+  await run(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `
+    import assert from "node:assert/strict";
+    import { join } from "node:path";
+    import { createClient, identity, decodeGrant, PermissionDenied } from "@farming-labs/capvine";
+    import { createCapvine } from "@farming-labs/capvine/setup";
+    import { filesystem } from "@farming-labs/capvine/plugins";
+    import { createCapvineClient } from "@farming-labs/capvine/client";
+    const root = ${JSON.stringify(temporary)};
+    const baseURL = "http://127.0.0.1:8796";
+    const options = {
+      baseURL, ownerId: "consumer", storage: { directory: join(root, "application-state") },
+      authenticate: request => request.headers.get("cookie") === "test=owner" ? { ownerId: "consumer", sessionId: "consumer-test-session" } : null,
+      plugins: [filesystem({ id: "reports", root: join(root, "plugin-data") })],
+    };
+    let app = await createCapvine(options);
+    const owner = createCapvineClient({ baseURL, fetch: (input, init) => {
+      const request = new Request(input, init); request.headers.set("cookie", "test=owner"); return app.handler(request);
+    } });
+    try {
+      const resource = await owner.resources.register({ type: "fs.file", target: { path: "report.txt" } });
+      const signer = await identity.generate();
+      const issued = await owner.grants.issue({ resource: resource.id, action: "fs/read", audience: signer.did() });
+      const grant = await decodeGrant(Buffer.from(issued.grant, "base64"));
+      const worker = createClient({ signer, service: identity.Verifier.parse(issued.service), transport: async bytes => {
+        const response = await app.handler(new Request(issued.invocationURL, { method: "POST", headers: { "content-type": "application/vnd.ipld.car" }, body: bytes }));
+        if (!response.ok) throw new PermissionDenied("Denied"); return (await response.json()).ok;
+      } });
+      assert.equal(await worker.invoke(grant), "Consumer report");
+      await app.close(); app = await createCapvine(options);
+      assert.equal(await worker.invoke(grant), "Consumer report");
+      await owner.grants.revoke({ id: issued.id });
+      await assert.rejects(worker.invoke(grant), PermissionDenied);
+    } finally { await app.close(); }
+  `,
+    ],
+    { cwd: consumer },
+  );
   console.log(
-    `Packed artifact verified: ${entries.length} runtime/type entry points, installed CLI and plugin workflow; no source fixtures or state files included.`,
+    `Packed artifact verified: ${entries.length} runtime/type entry points, installed CLI, plugin and application workflows; no source fixtures or state files included.`,
   );
   if (output) {
     const archive = await readFile(join(temporary, packed.filename));
@@ -177,6 +219,7 @@ try {
         consumerTypes: true,
         installedCli: true,
         pluginWorkflow: true,
+        applicationWorkflow: true,
       },
       publicationApproved: false,
       limits:

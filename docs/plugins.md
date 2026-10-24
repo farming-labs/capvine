@@ -1,5 +1,7 @@
 # Provider and resource plugins
 
+For applications that connect accounts and select resources while running, start with the [application API](application.md). This guide covers the compatible fixed-resource setup API. Its `./resources` factories are distinct from runtime `./plugins`.
+
 `createCapvine` composes the existing account manager, persistent authority, adapters, administration client, workflow manager, and worker provisioning APIs. Provider factories use `providers: [google(options)]`; resource factories use `resources: [filesystem(options), gmail(options)]`. All plugins are explicitly imported trusted backend code. There is no package discovery, runtime installation, or plugin sandbox.
 
 ## Run a complete example

@@ -48,6 +48,7 @@ interface Pending {
   verifier: string;
   nonce: string;
   expiresAt: number;
+  returnTo?: string;
 }
 const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -121,9 +122,13 @@ export async function openAccountManager(options: {
       sessionId: string;
       connectionId: string;
       provider: string;
+      returnTo?: string;
     }) {
       return track(async () => {
         if (
+          (input.returnTo !== undefined &&
+            (typeof input.returnTo !== "string" ||
+              input.returnTo.length > 2048)) ||
           !input.ownerId ||
           input.ownerId.length > 256 ||
           input.sessionId.length < 32 ||
@@ -154,6 +159,7 @@ export async function openAccountManager(options: {
           verifier,
           nonce,
           expiresAt: Date.now() + 600_000,
+          ...(input.returnTo === undefined ? {} : { returnTo: input.returnTo }),
         };
         store.insert([
           { kind: "connection", id: connection.id, value: connection },
@@ -198,7 +204,12 @@ export async function openAccountManager(options: {
             tokens,
           };
           store.replace("connection", value.id, record.revision, value);
-          return metadata(value);
+          return {
+            ...metadata(value),
+            ...(pending.returnTo === undefined
+              ? {}
+              : { returnTo: pending.returnTo }),
+          };
         } catch {
           throw new Error("Account connection failed; start a new connection");
         }

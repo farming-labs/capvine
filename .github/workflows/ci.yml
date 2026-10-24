@@ -29,6 +29,7 @@ jobs:
       - run: npm run example:accounts
       - run: npm run example:slack
       - run: npm run example:plugins
+      - run: npm run example:application
 
   isolation:
     runs-on: ubuntu-latest

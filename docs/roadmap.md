@@ -116,6 +116,10 @@ Operate the same OSS verifier with hosted storage, tenant provisioning, identity
 - [x] An [external security/API review packet](security-review.md) defining the candidate, trust boundaries, review questions, and required reviewer evidence. An actual independent review remains open.
 - [x] A [checked package review bundle](release-runbook.md) with source revision, artifact digests, fresh-consumer tests, and a read-only manual CI workflow. Registry publishing remains disabled pending review and deployment acceptance.
 
+## Runtime application API — implemented
+
+[Issue #39](https://github.com/farming-labs/capvine/issues/39) adds the [application API](application.md): a shared Request/Response handler, owner-session authentication, a typed owner client, automatic provider callback configuration, persistent exact resource registration, and grant issuance/revocation while running. Gmail, Slack, filesystem and PostgreSQL runtime plugins reuse their existing adapters and verifier. `test/application.test.ts` covers the owner/worker boundary, raw signed escalation, callback session binding, restart, revocation, account disconnection and resource replacement. `npm run example:application` exercises a local OAuth fixture and separate worker processes over HTTP. The source API is implemented; independent review, live provider/host validation and publication remain open.
+
 ## Recommended next milestone
 
 The [plugin setup milestone](https://github.com/farming-labs/capvine/issues/37) adds `createCapvine`, explicit provider and resource factories, shared workflow validation, first-run/restart lifecycle, a complete custom OIDC/message example, and [adopter documentation](plugins.md). Internal server-boundary tests and a separate-process MCP example cover setup, rejection, restart, renewal and disable. An independent API/security review is still required; these implementation checks do not close issue #16.

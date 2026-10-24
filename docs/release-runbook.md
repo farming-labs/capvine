@@ -14,7 +14,7 @@ npm run example:recovery
 npm run release:bundle -- /tmp/capvine-review-candidate
 ```
 
-The output directory must be new and outside the checkout. The command packs the artifact, validates its contents, installs that exact tarball in a fresh consumer without dev dependencies, imports all public entries, type-checks consumer imports, and runs the installed CLI. It then retains that tarball and a report containing the revision, dirty-checkout indicator, Node version, package metadata, SHA-256, and npm-style SHA-512 integrity. No keys, account data, credentials, or local configuration belong in this bundle. The report explicitly does not approve publication.
+The output directory must be new and outside the checkout. The command packs the artifact, validates its contents, installs that exact tarball in a fresh consumer without dev dependencies, imports all public entries, type-checks consumer imports, runs the installed CLI, and verifies both fixed-resource and runtime application workflows against that installed artifact. It then retains that tarball and a report containing the revision, dirty-checkout indicator, Node version, package metadata, SHA-256, and npm-style SHA-512 integrity. No keys, account data, credentials, or local configuration belong in this bundle. The report explicitly does not approve publication.
 
 The manually dispatched **Release review bundle** GitHub workflow runs the full tests, examples, recovery and Linux containment checks, then uploads the package/report for 14 days. It has read-only repository permission, no registry credentials, no OIDC permission, and no publish command. Archive the chosen evidence in the review record before artifact retention expires. CI artifact integrity is not npm provenance.
 
