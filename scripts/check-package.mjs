@@ -113,8 +113,42 @@ try {
     { cwd: consumer },
   );
   assert.match(JSON.parse(initialized).service, /^did:key:/);
+  await run(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `
+    import assert from "node:assert/strict";
+    import { mkdir, writeFile } from "node:fs/promises";
+    import { join } from "node:path";
+    import { createCapvine, workflow } from "@farming-labs/capvine/setup";
+    import { filesystem } from "@farming-labs/capvine/resources";
+    import { loadWorker } from "@farming-labs/capvine/worker";
+    const root = ${JSON.stringify(temporary)};
+    const data = join(root, "plugin-data");
+    await mkdir(data, { mode: 0o700 });
+    await writeFile(join(data, "report.txt"), "Consumer report", { mode: 0o600 });
+    const resource = "urn:capvine:resource:report";
+    const app = await createCapvine({
+      directory: join(root, "plugin-state"), ownerId: "consumer", port: 0,
+      resources: [filesystem({ root: data, connectionId: "reports", files: [{ id: resource, path: "report.txt" }] })],
+      workflows: [workflow({ id: "read-report", resource, action: "fs/read" })],
+    });
+    try {
+      const approval = await app.workflows.approve("read-report");
+      const job = await app.workflows.provision(approval.id);
+      const worker = await loadWorker(job.path);
+      assert.match(JSON.stringify(await worker.invoke()), /Consumer report/);
+      await app.workflows.disable(approval.id);
+      await assert.rejects(worker.invoke());
+    } finally { await app.close(); }
+  `,
+    ],
+    { cwd: consumer },
+  );
   console.log(
-    `Packed artifact verified: ${entries.length} runtime/type entry points and installed CLI; no source fixtures or state files included.`,
+    `Packed artifact verified: ${entries.length} runtime/type entry points, installed CLI and plugin workflow; no source fixtures or state files included.`,
   );
   if (output) {
     const archive = await readFile(join(temporary, packed.filename));
@@ -142,6 +176,7 @@ try {
         runtimeEntries: entries,
         consumerTypes: true,
         installedCli: true,
+        pluginWorkflow: true,
       },
       publicationApproved: false,
       limits:

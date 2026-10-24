@@ -8,7 +8,7 @@ import { createServer, type ServerResponse } from "node:http";
 import { createOidcProvider } from "../../src/oauth.ts";
 
 export async function startProviderFixture(
-  options: { redirectUri?: string } = {},
+  options: { redirectUri?: string; scopes?: string[] } = {},
 ) {
   const keys = generateKeyPairSync("rsa", { modulusLength: 2048 });
   const jwk = {
@@ -19,7 +19,10 @@ export async function startProviderFixture(
   };
   const clientSecret = randomBytes(32).toString("base64url");
   const redirectUri = options.redirectUri ?? "http://127.0.0.1:8765/callback";
-  const scopes = ["openid", "https://www.googleapis.com/auth/gmail.readonly"];
+  const scopes = options.scopes ?? [
+    "openid",
+    "https://www.googleapis.com/auth/gmail.readonly",
+  ];
   const codes = new Map<
     string,
     { challenge: string; nonce: string; redirect: string }
@@ -248,6 +251,19 @@ export async function startProviderFixture(
   if (!address || typeof address === "string")
     throw new Error("Missing fixture address");
   issuer = `http://127.0.0.1:${address.port}`;
+  const providerOptions = () => ({
+    id: "google",
+    issuer,
+    clientId: "fixture-client",
+    clientSecret,
+    redirectUri,
+    scopes: [...scopes],
+    authorizationEndpoint: issuer + "/authorize",
+    tokenEndpoint: issuer + "/token",
+    userInfoEndpoint: issuer + "/userinfo",
+    jwksUri: issuer + "/jwks",
+    allowLoopbackHttp: true,
+  });
   return {
     controls,
     counts,
@@ -258,20 +274,8 @@ export async function startProviderFixture(
       refresh.clear();
     },
     secrets: () => [clientSecret, ...access.keys(), ...refresh.keys()],
-    provider: () =>
-      createOidcProvider({
-        id: "google",
-        issuer,
-        clientId: "fixture-client",
-        clientSecret,
-        redirectUri,
-        scopes,
-        authorizationEndpoint: issuer + "/authorize",
-        tokenEndpoint: issuer + "/token",
-        userInfoEndpoint: issuer + "/userinfo",
-        jwksUri: issuer + "/jwks",
-        allowLoopbackHttp: true,
-      }),
+    providerOptions,
+    provider: () => createOidcProvider(providerOptions()),
     async authorize(url: string) {
       const response = await fetch(url, { redirect: "manual" });
       await response.body?.cancel();

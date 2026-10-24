@@ -14,6 +14,8 @@ Public entries cover the core verifier/client, SQLite, HTTP, identity files, aut
 
 ## Evidence available
 
+- Plugin setup composes the existing services without changing the capability profile. Tests cover shared-action dispatch, raw signed retargeting denial, initialization/restart, invalid configuration cleanup, account credential separation, wrong/missing keys, and concurrent shutdown. `npm run example:plugins` exercises a custom OIDC provider/resource through a separate MCP process. The `./setup`, `./providers`, and `./resources` entries are included in package consumer checks. See [plugin integration](plugins.md); independent adopter/security review remains open.
+
 - Server-boundary negative tests cover signatures, recipients, exact caveats, proof shape/depth, expiry, revocation, task termination, and failed state/audit access. Failed grant persistence does not return a grant; failed verification/lifecycle/audit storage prevents dispatch.
 - The service example and tests cover authenticated administration, private files, state migration, persistent identity, binding conflicts, restart, and graceful draining.
 - Filesystem and PostgreSQL tests establish the actual selected targets and bounded reads; PostgreSQL runs as real temporary clusters.

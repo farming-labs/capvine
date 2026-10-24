@@ -12,6 +12,8 @@ The repository tests explicit negative cases: changed resources, operations, tas
 
 ## Integration requirements
 
+`createCapvine` is trusted backend composition. Provider/resource plugins are explicit imports with the backend's privileges; they are not sandboxed. Setup never grants permission merely because a workflow is configured. Its default credential-encryption key is a private file outside the account database, so encryption protects a database copy without that key, not a complete state-folder copy or a compromised process. An externally supplied key remains the application's responsibility. See [plugin setup and key custody](docs/plugins.md).
+
 - Authenticate the owner before calling `issue`; the `actor` string is not authentication.
 - Keep registration, grant issuance, task administration, and revocation operations on a separately authorized application surface.
 - Store authority keys and provider credentials outside client-accessible files, tools, browsers, logs, and prompts. Each client may hold its own signing key; it must not obtain another client's key.
