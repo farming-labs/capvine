@@ -10,6 +10,7 @@ import {
 } from "./identity-file.ts";
 import { createHttpTransport } from "./http.ts";
 import { loadWorker, provisionWorker, renewWorker } from "./worker.ts";
+import { validateWorkflowDefinitions } from "./workflow-definition.ts";
 import { readClaim } from "./profile.ts";
 import {
   PermissionDenied,
@@ -72,27 +73,7 @@ export async function openWorkflowManager(options: {
     new Set(definitions.map((item) => item.id)).size !== definitions.length
   )
     throw new Error("Invalid workflow configuration");
-  for (const item of definitions) {
-    if (
-      !/^[a-z][a-z0-9-]{0,31}$/.test(item.id) ||
-      !item.label ||
-      item.label.length > 128 ||
-      !item.resource.startsWith("urn:capvine:resource:") ||
-      !item.action ||
-      item.action.length > 1024 ||
-      !/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(item.toolName) ||
-      !Number.isSafeInteger(item.approvalSeconds) ||
-      item.approvalSeconds < 60 ||
-      item.approvalSeconds > 31 * 86_400 ||
-      !Number.isSafeInteger(item.grantSeconds) ||
-      item.grantSeconds < 60 ||
-      item.grantSeconds > 3600 ||
-      !Number.isSafeInteger(item.workerSeconds) ||
-      item.workerSeconds < 60 ||
-      item.workerSeconds > item.grantSeconds
-    )
-      throw new Error("Invalid workflow definition");
-  }
+  validateWorkflowDefinitions(definitions);
   createHttpTransport({ url: options.url });
   await mkdir(options.directory, { mode: 0o700 }).catch(
     (error: NodeJS.ErrnoException) => {

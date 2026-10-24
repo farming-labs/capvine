@@ -8,13 +8,15 @@ import { assertPrivateDirectory } from "./identity-file.ts";
 export async function openAccountDatabase(
   directory: string,
   secret: Uint8Array,
+  initialize = true,
 ) {
   if (secret.byteLength !== 32)
     throw new Error("A 32-byte credential key is required");
   const key = Buffer.from(secret);
-  await mkdir(directory, { mode: 0o700 }).catch((error) => {
-    if (error.code !== "EEXIST") throw error;
-  });
+  if (initialize)
+    await mkdir(directory, { mode: 0o700 }).catch((error) => {
+      if (error.code !== "EEXIST") throw error;
+    });
   await assertPrivateDirectory(directory);
   const lockPath = join(directory, "accounts.lock");
   const lock = await open(lockPath, "wx", 0o600);
@@ -55,7 +57,7 @@ export async function openAccountDatabase(
     const path = join(directory, "accounts.db");
     const file = await open(
       path,
-      constants.O_CREAT |
+      (initialize ? constants.O_CREAT : 0) |
         constants.O_RDWR |
         constants.O_NOFOLLOW |
         constants.O_NONBLOCK,
@@ -75,6 +77,8 @@ export async function openAccountDatabase(
     }
     db = new DatabaseSync(path);
     const version = db.prepare("PRAGMA user_version").get()!.user_version;
+    if (!initialize && version === 0)
+      throw new Error("Credential database is not initialized");
     if (version !== 0 && version !== 1)
       throw new Error("Unsupported credential schema");
     const tables = db

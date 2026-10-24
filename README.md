@@ -39,6 +39,7 @@ Implemented:
 - A Slack PKCE account provider with rotating user tokens and exact conversation/message reads, validated against an HTTP fixture.
 - An authenticated local account console with OAuth callbacks, connection management, session/CSRF controls, and an opt-in Gmail delegation test screen.
 - A persistent local service with authenticated operator administration, pinned resource bindings, and restart checks.
+- A plugin setup API with provider/resource factories, persistent initialization, and a connect-before-register workflow.
 - In-process and separate-process issue-reading examples, plus tests that bypass the client to attack server enforcement.
 
 Not implemented: a production service deployment, multi-user/remote account management, macOS desktop isolation, write-operation replay protection, budgets, or a managed service. Direct account connection and refresh are tested against a local OAuth/OIDC provider fixture; a configured local Google smoke test has also verified consent, refresh, delegated reads, restart, and revocation. Provider-consent revocation and production isolation remain unverified. The live GitHub example uses public data.
@@ -60,6 +61,7 @@ npm run example:service
 npm run example:resources
 npm run example:accounts
 npm run example:slack
+npm run example:plugins
 npm run example:recovery
 ```
 
@@ -70,6 +72,8 @@ For a browser walkthrough, run `npm run playground` and open **http://127.0.0.1:
 The [network example](examples/network/README.md) runs an authority, coordinator, and three workers in separate processes. Each worker reads only its assigned issue over HTTP. Changing the issue, action, or task fails. Revoking one root leaves independent grants working; ending the task disables all of them. Try `--workers 8` to increase fan-out. This is a correctness demonstration, not a capacity benchmark or OS sandbox.
 
 ## The developer integration
+
+Start with the [plugin setup guide](docs/plugins.md) for `createCapvine({ providers: [google(options)], resources: [gmail(options)], workflows: [workflow(options)] })`. It composes the existing components, initializes private state on first use, and reuses keys and approvals on restart. `npm run example:plugins` exercises a custom OIDC provider and resource through a separate MCP worker, including renewal and persistent disable. It uses a local fixture, not a real account. Plugins are explicitly imported trusted server code; independent security and adopter API reviews remain open.
 
 The server runs in protected application code. Your application supplies its authenticated actor, resource registry, operation handlers, secret management, and owner policy.
 

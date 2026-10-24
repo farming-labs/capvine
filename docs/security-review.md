@@ -14,6 +14,7 @@ npm run example:resources
 npm run example:mcp
 npm run example:accounts
 npm run example:slack
+npm run example:plugins
 npm run example:recovery
 sh examples/isolation/run.sh
 ```
@@ -21,6 +22,8 @@ sh examples/isolation/run.sh
 Use Node 24+, PostgreSQL server binaries, a non-root test user, and Linux Docker for containment. Live-provider evidence and the actual host are separate inputs; the fixture provider is not evidence about real Google/Slack behavior.
 
 ## Review scope
+
+Include the plugin composition in `src/setup.ts`, `src/providers.ts`, `src/resources.ts` and `src/workflow-definition.ts`. Review first-run initialization, missing-key/state rejection, concurrent ownership, plugin cleanup, and dispatch when several plugins share an action. Confirm configuration never approves itself and that account connection remains independent of resource registration and grant issuance. Run `test/setup.test.ts` and the custom-provider example; use the integration steps and reviewer questions in [the plugin guide](plugins.md). Plugins and their dependencies execute with backend privileges.
 
 | Boundary                       | Sources                                                                                                   | Questions to resolve                                                                                                                                                                                        |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -37,6 +40,8 @@ Attacker-controlled inputs include prompts, provider content, workers, tool argu
 Prioritize exploitable bypasses and durable failure modes over code-style feedback. Use raw signed requests and observable handler/provider counters when reporting authorization findings. Do not send personal account contents or real keys in a reproduction. Follow [SECURITY.md](../SECURITY.md) for disclosure.
 
 ## Adopter API review
+
+Begin with `createCapvine` and factory arrays from the plugin guide. Compare the one-call setup for existing connections with the two-phase connect-then-register flow. Verify whether users understand `directory` as persistent backend state, `encryptionKey` as an optional externally managed credential key, immutable resource IDs, and the need to restart for configuration changes. Record actual adopter feedback; the guide itself is not that feedback.
 
 Ask application developers to integrate from the packed artifact rather than source aliases. Exercise one exact file/database record and one provider-backed message, assign a child worker, reuse a saved approval after restart, renew a worker, revoke a parent, and disable the workflow. Record where they confused account connection with permission issuance, resource IDs with provider targets, or token refresh with grant renewal. Check runtime/type imports and the installed CLI without workspace dev dependencies.
 

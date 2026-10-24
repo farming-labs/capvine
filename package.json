@@ -25,6 +25,7 @@
     "package:check": "node scripts/check-package.mjs",
     "example:accounts": "tsx examples/accounts/demo.ts",
     "example:slack": "tsx examples/slack/demo.ts",
+    "example:plugins": "npm run build && tsx examples/plugins/demo.ts",
     "console:accounts": "tsx examples/account-console.ts",
     "console:workflows": "npm run build && tsx examples/workflow-console.ts",
     "playground": "tsx examples/delegation-playground/main.ts",
@@ -33,6 +34,18 @@
     "release:bundle": "npm run build && node scripts/check-package.mjs --output"
   },
   "exports": {
+    "./setup": {
+      "types": "./dist/setup.d.ts",
+      "default": "./dist/setup.js"
+    },
+    "./providers": {
+      "types": "./dist/providers.d.ts",
+      "default": "./dist/providers.js"
+    },
+    "./resources": {
+      "types": "./dist/resources.d.ts",
+      "default": "./dist/resources.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"

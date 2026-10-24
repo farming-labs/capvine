@@ -26,6 +26,7 @@ jobs:
       - run: npm run example:mcp
       - run: npm run example:accounts
       - run: npm run example:slack
+      - run: npm run example:plugins
       - run: sh examples/isolation/run.sh
       - run: npm run release:bundle -- "$RUNNER_TEMP/capvine-review"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
