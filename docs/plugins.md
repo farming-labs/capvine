@@ -17,7 +17,7 @@ npm run example:plugins
 
 ## One-call setup for local resources
 
-Prepare a service-owned directory and regular text file as described in [filesystem resources](resources.md). Use a new absolute path for Capvine state on the first run; its parent directory must already exist and be protected. The package remains unpublished, so run examples from this checkout until release approval.
+Prepare a service-owned directory and regular text file as described in [filesystem resources](resources.md). Use a new absolute path for Capvine state on the first run; its parent directory must already exist and be protected. Install the experimental package with `npm install --save-exact @farming-labs/capvine@0.0.1`; the examples run from this checkout.
 
 ```ts
 import { createCapvine, workflow } from "@farming-labs/capvine/setup";

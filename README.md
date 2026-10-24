@@ -18,7 +18,13 @@ Capvine builds on [ucanto](https://github.com/storacha/ucanto). Applications sup
 
 ## Status
 
-This repository contains the first working prototype. The package is private to prevent accidental npm publication; the source is MIT licensed. APIs may change. It has not had an independent security review.
+Version `0.0.1` is the first experimental, MIT-licensed release. APIs may change. It has not had an independent security review and is not a supported production security boundary. See the [release notes](docs/releases/0.0.1.md) for the scope and unverified checks.
+
+Requires Node.js 24 or later. Pin the version when integrating:
+
+```sh
+npm install --save-exact @farming-labs/capvine@0.0.1
+```
 
 Implemented:
 

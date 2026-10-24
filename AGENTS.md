@@ -10,7 +10,7 @@ Capvine is an experimental TypeScript library for delegated, resource-bound auth
 - Add tests at the server boundary using raw signed requests for authorization changes.
 - Never introduce permissive fallback when verification or lifecycle storage fails.
 - Keep claims in README and SECURITY.md aligned with implemented and tested behavior.
-- Keep the prototype package private until release readiness and publishing have been explicitly addressed.
+- Keep releases explicitly authorized and document experimental scope, incomplete acceptance checks, and the actual publishing method. Never treat publication as independent security or production approval.
 - Do not put real credentials, personal account data, or signing keys into fixtures or commits.
 - Use neutral fixture identities and standalone technical language in documentation, examples, issues, and commit messages. Do not include personal deployment details or conversation history.
 - Use descriptive branch names with purpose-based prefixes such as `feat/`, `fix/`, `docs/`, or `test/`. Keep branch names and PR labels free of tool or vendor branding.
