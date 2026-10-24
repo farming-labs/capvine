@@ -184,6 +184,15 @@ try {
       assert.equal(await worker.invoke(grant), "Consumer report");
       await owner.grants.revoke({ id: issued.id });
       await assert.rejects(worker.invoke(grant), PermissionDenied);
+      const saved = await owner.workflows.approve({ resource: resource.id, action: "fs/read", audience: signer.did(), expiresIn: 600 });
+      const renewed = await owner.workflows.issue({ id: saved.id });
+      const proof = await decodeGrant(Buffer.from(renewed.grant, "base64"));
+      assert.equal(await worker.invoke(proof), "Consumer report");
+      await app.close(); app = await createCapvine(options);
+      assert.equal((await owner.workflows.list()).workflows[0].id, saved.id);
+      await owner.workflows.disable({ id: saved.id });
+      await assert.rejects(worker.invoke(proof), PermissionDenied);
+      await assert.rejects(owner.workflows.issue({ id: saved.id }));
     } finally { await app.close(); }
   `,
     ],

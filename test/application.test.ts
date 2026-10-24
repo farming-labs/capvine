@@ -857,3 +857,221 @@ test("multiple instances require an explicit plugin selection and paginated list
     ids.sort(),
   );
 });
+
+test("saved application approvals renew the same scope and disable every descendant across restart", async (t) => {
+  const f = await fixture(t);
+  const connectionId = await f.connect();
+  const selected = await f.client.resources.register({
+    type: "gmail.message",
+    connectionId,
+    target: { messageId: "a42" },
+  });
+  const coordinator = await identity.generate();
+  const worker = await identity.generate();
+  const saved = await f.client.workflows.approve({
+    resource: selected.id,
+    action: "gmail/message.read",
+    audience: coordinator.did(),
+    expiresIn: 600,
+    maxGrantSeconds: 120,
+  });
+  assert.equal(saved.active, true);
+  const original = await f.client.workflows.issue({ id: saved.id });
+  assert.ok(original.expiresAt <= saved.expiresAt);
+  assert.ok(original.expiresAt <= Math.floor(Date.now() / 1000) + 120);
+  const parent = await decodeGrant(Buffer.from(original.grant, "base64"));
+  const client = createClient({
+    signer: coordinator,
+    service: identity.Verifier.parse(original.service),
+    transport: f.transport,
+  });
+  const child = await client.delegate({
+    grant: parent,
+    audience: worker,
+    expiresAt: new Date(Date.now() + 60000),
+  });
+  const childClient = createClient({
+    signer: worker,
+    service: identity.Verifier.parse(original.service),
+    transport: f.transport,
+  });
+  assert.equal(((await childClient.invoke(child)) as { id: string }).id, "a42");
+  await f.restart();
+  assert.deepEqual((await f.client.workflows.list()).workflows, [saved]);
+  const renewed = await f.app.api.workflows.issue({
+    headers: f.headers,
+    body: { id: saved.id },
+  });
+  const fresh = await decodeGrant(Buffer.from(renewed.grant, "base64"));
+  assert.deepEqual(fresh.capabilities, parent.capabilities);
+  assert.equal(fresh.audience.did(), parent.audience.did());
+  assert.equal(((await client.invoke(fresh)) as { id: string }).id, "a42");
+  const raw = await invoke({
+    issuer: worker,
+    audience: identity.Verifier.parse(original.service),
+    capability: {
+      ...child.capabilities[0]!,
+      nb: {
+        ...(child.capabilities[0]!.nb as Record<string, unknown>),
+        action: "gmail/message.send",
+      },
+    },
+    proofs: [child],
+  }).delegate();
+  const reads = f.provider.counts.reads;
+  await assert.rejects(f.transport(await encodeGrant(raw)), PermissionDenied);
+  await f.client.workflows.disable({ id: saved.id });
+  await assert.rejects(childClient.invoke(child), PermissionDenied);
+  await assert.rejects(client.invoke(fresh), PermissionDenied);
+  await assert.rejects(f.client.workflows.issue({ id: saved.id }), denied(403));
+  assert.equal(f.provider.counts.reads, reads);
+  await f.restart();
+  assert.equal((await f.client.workflows.list()).workflows[0]?.active, false);
+  await assert.rejects(f.client.workflows.issue({ id: saved.id }), denied(403));
+  await assert.rejects(childClient.invoke(child), PermissionDenied);
+});
+
+test("workflow renewal cannot change scope or bypass owner authentication and provider disconnection", async (t) => {
+  const f = await fixture(t);
+  const connectionId = await f.connect();
+  const selected = await f.client.resources.register({
+    type: "gmail.message",
+    connectionId,
+    target: { messageId: "a42" },
+  });
+  const signer = await identity.generate();
+  const input = {
+    resource: selected.id,
+    action: "gmail/message.read",
+    audience: signer.did(),
+    expiresIn: 300,
+  };
+  for (const expiresIn of [0, -1, 0.5, 2592001])
+    await assert.rejects(
+      f.client.workflows.approve({ ...input, expiresIn }),
+      denied(400),
+    );
+  await assert.rejects(
+    f.client.workflows.approve({ ...input, maxGrantSeconds: 3601 }),
+    denied(400),
+  );
+  await assert.rejects(
+    f.client.workflows.approve({ ...input, action: "gmail/message.send" }),
+    denied(403),
+  );
+  const saved = await f.client.workflows.approve(input);
+  for (const route of ["workflows/issue", "workflows/disable"]) {
+    assert.equal(
+      (await f.raw(route, { id: saved.id }, { ...f.headers, cookie: "" }))
+        .status,
+      401,
+    );
+    assert.equal(
+      (
+        await f.raw(
+          route,
+          { id: saved.id },
+          { ...f.headers, cookie: "session=another-owner" },
+        )
+      ).status,
+      403,
+    );
+    assert.equal(
+      (
+        await f.raw(
+          route,
+          { id: saved.id },
+          { ...f.headers, origin: "https://attacker.example" },
+        )
+      ).status,
+      403,
+    );
+  }
+  for (const extra of [
+    { audience: (await identity.generate()).did() },
+    { resource: "urn:capvine:resource:other" },
+    { action: "gmail/message.send" },
+    { expiresIn: 9999 },
+  ])
+    assert.equal(
+      (await f.raw("workflows/issue", { id: saved.id, ...extra })).status,
+      400,
+    );
+  await f.client.connections.disconnect({ connectionId });
+  await assert.rejects(f.client.workflows.issue({ id: saved.id }), denied(403));
+  await f.restart();
+  await assert.rejects(f.client.workflows.issue({ id: saved.id }), denied(403));
+});
+
+test("automatic renewal delivers fresh grants serially and stops on disable, abort, or delivery failure", async (t) => {
+  const f = await fixture(t);
+  const selected = await f.client.resources.register({
+    type: "fs.file",
+    target: { path: "one.txt" },
+  });
+  const signer = await identity.generate();
+  const saved = await f.client.workflows.approve({
+    resource: selected.id,
+    action: "fs/read",
+    audience: signer.did(),
+    expiresIn: 60,
+    maxGrantSeconds: 4,
+  });
+  const abort = new AbortController();
+  const delivered: string[] = [];
+  await assert.rejects(
+    f.client.workflows.maintain({
+      id: saved.id,
+      signal: abort.signal,
+      async onGrant(grant) {
+        const proof = await decodeGrant(Buffer.from(grant.grant, "base64"));
+        const worker = createClient({
+          signer,
+          service: identity.Verifier.parse(grant.service),
+          transport: f.transport,
+        });
+        assert.equal(await worker.invoke(proof), "Report one");
+        delivered.push(grant.id);
+        if (delivered.length === 2)
+          await f.client.workflows.disable({ id: saved.id });
+      },
+    }),
+    denied(403),
+  );
+  assert.equal(new Set(delivered).size, 2);
+  abort.abort();
+  await f.client.workflows.maintain({
+    id: "unknown",
+    signal: abort.signal,
+    onGrant() {
+      assert.fail("Aborted renewal delivered a grant");
+    },
+  });
+  const active = await f.client.workflows.approve({
+    resource: selected.id,
+    action: "fs/read",
+    audience: signer.did(),
+    expiresIn: 60,
+  });
+  await assert.rejects(
+    f.client.workflows.maintain({
+      id: active.id,
+      signal: new AbortController().signal,
+      onGrant() {
+        throw new Error("Delivery failed");
+      },
+    }),
+    /Delivery failed/,
+  );
+  const stop = new AbortController();
+  let count = 0;
+  await f.client.workflows.maintain({
+    id: active.id,
+    signal: stop.signal,
+    onGrant() {
+      count++;
+      stop.abort();
+    },
+  });
+  assert.equal(count, 1);
+});

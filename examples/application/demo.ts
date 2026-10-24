@@ -113,12 +113,14 @@ export async function runApplicationExample() {
       new Set([process.pid, coordinatorInfo.pid, workerInfo.pid]).size,
       3,
     );
-    const root = await owner.grants.issue({
+    const approval = await owner.workflows.approve({
       resource: receipt.id,
       action: "gmail/message.read",
       audience: coordinatorInfo.did,
-      expiresIn: 300,
+      expiresIn: 3600,
+      maxGrantSeconds: 300,
     });
+    const root = await owner.workflows.issue({ id: approval.id });
     for (const peer of [coordinator, worker])
       await peer.request("connect", {
         url: root.invocationURL,
@@ -154,7 +156,21 @@ export async function runApplicationExample() {
     listener = toNodeHandler(app, { baseURL });
     assert.equal((await read()).value?.id, "a42");
     assert.equal(provider.counts.exchanges, 1);
-    await owner.grants.revoke({ id: root.id });
+    const renewed = await owner.workflows.issue({ id: approval.id });
+    const renewedChild = await coordinator.request<{ grant: string }>(
+      "delegate",
+      { grant: renewed.grant, audience: workerInfo.did },
+    );
+    await owner.workflows.disable({ id: approval.id });
+    assert.equal(
+      (
+        await worker.request<{ status: string }>("read", {
+          grant: renewedChild.grant,
+        })
+      ).status,
+      "denied",
+    );
+    await assert.rejects(owner.workflows.issue({ id: approval.id }));
     assert.equal((await read()).status, "denied");
     await app.close();
     app = await open();
@@ -168,6 +184,8 @@ export async function runApplicationExample() {
       crossResourceDenied: true,
       restartWithoutConsent: true,
       revokedAfterRestart: true,
+      savedApprovalRenewal: true,
+      disabledRenewalDenied: true,
       providerCredentialsWithheld: true,
     };
   } finally {
