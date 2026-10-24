@@ -35,6 +35,16 @@ export interface IssuedGrant {
   invocationURL: string;
 }
 
+export interface SavedWorkflow {
+  id: string;
+  resource: ResourceId;
+  action: string;
+  audience: string;
+  expiresAt: number;
+  maxGrantSeconds: number;
+  active: boolean;
+}
+
 export interface ApplicationCommands {
   "connections/connect": {
     input: { provider: string; returnTo?: string };
@@ -66,6 +76,22 @@ export interface ApplicationCommands {
     output: IssuedGrant;
   };
   "grants/revoke": { input: { id: string }; output: { revoked: true } };
+  "workflows/approve": {
+    input: {
+      resource: ResourceId;
+      action: string;
+      audience: string;
+      expiresIn: number;
+      maxGrantSeconds?: number;
+    };
+    output: SavedWorkflow;
+  };
+  "workflows/list": {
+    input: { after?: string };
+    output: { workflows: SavedWorkflow[]; nextCursor: string | null };
+  };
+  "workflows/issue": { input: { id: string }; output: IssuedGrant };
+  "workflows/disable": { input: { id: string }; output: { disabled: true } };
 }
 
 export type Command = keyof ApplicationCommands;

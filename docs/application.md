@@ -145,7 +145,44 @@ await client.grants.revoke({ id: grant.id });
 await client.connections.disconnect({ connectionId: selectedConnection.id });
 ```
 
-Revocation blocks subsequent verified calls; it cannot undo a completed read or recall already returned data. Disconnect removes local provider credentials and blocks account-backed resources; it does not claim to revoke consent at Google or Slack. Reconnect creates a fresh connection ID and requires fresh resource selection and grants. There is no automatic renewal in this new owner-client API; the existing [saved workflow APIs](workflow-approvals.md) remain available separately.
+Revocation blocks subsequent verified calls; it cannot undo a completed read or recall already returned data. Disconnect removes local provider credentials and blocks account-backed resources; it does not claim to revoke consent at Google or Slack. Reconnect creates a fresh connection ID and requires fresh resource selection and grants. For repeat work, use the saved workflows below; the existing [lower-level workflow APIs](workflow-approvals.md) remain compatible.
+
+## Approve once and renew within that permission
+
+A saved workflow fixes one resource, action and recipient. The owner explicitly approves its total lifetime (up to 30 days) and the lifetime of each proof (up to one hour):
+
+```ts
+const workflow = await client.workflows.approve({
+  resource: receipt.id,
+  action: "gmail/message.read",
+  audience: coordinator.did,
+  expiresIn: 24 * 60 * 60,
+  maxGrantSeconds: 300,
+});
+const grant = await client.workflows.issue({ id: workflow.id });
+```
+
+`issue` accepts only the saved ID. It cannot change the resource, recipient, operation or expiry limit. Reopening the application preserves approvals. `workflows.list()` returns paginated metadata; `workflows.disable({ id })` permanently ends the workflow task and blocks existing descendants and future renewal. Revoking one proof with `grants.revoke` does not disable its saved approval: disable the workflow to stop all future issuance.
+
+Opt into serial renewal in the authenticated owner application:
+
+```ts
+const controller = new AbortController();
+const renewal = client.workflows.maintain({
+  id: workflow.id,
+  signal: controller.signal,
+  onGrant: (grant) => deliverToAssignedCoordinator(grant),
+});
+// Attach error handling immediately; failed delivery or renewal stops the loop.
+renewal.catch(showRenewalError);
+// When this application component shuts down:
+controller.abort();
+await renewal;
+```
+
+`deliverToAssignedCoordinator` is your application's protected assignment channel. The coordinator can use the existing `renewWorker` API to replace a child's proof without changing its identity or scope. Do not send owner cookies, provider tokens or a signing key with the grant. `maintain` requests a fresh proof before expiry, waits for delivery before scheduling the next request, and stops on authentication, storage, provider or delivery failure. It does not silently retry or revive disabled workflows. Aborting stops future delivery/renewal; an already issued grant stays valid until revoked or expired. The promise resolves on abort and rejects on a failure; a pending bounded HTTP request may finish before shutdown completes.
+
+The loop requires the existing authenticated owner session on every request. It can run while the owner application is active; it is not a durable unattended scheduler and does not keep a login session alive. A host scheduler must supply a verified authorized application session and protect its assignment channel. A worker cannot renew using just a workflow ID, and must never receive the owner's session. Browser throttling or host downtime can interrupt renewal; resume deliberately from the saved approval after authentication. `capvine.api.workflows.approve/list/issue/disable` expose the same checks to backend integrations.
 
 ## Other plugins and custom services
 
