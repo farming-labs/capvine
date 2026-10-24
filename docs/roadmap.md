@@ -133,3 +133,7 @@ The owner client now exposes persistent workflow approval, listing, bounded proo
 ## Owner resource selection — implemented
 
 An optional [owner console](owner-console.md) now connects accounts, discovers exact choices, reviews resource/action/recipient/duration, approves saved workflows, and disables access. Gmail metadata and immediate regular-file discovery are built in; other plugins supply a bounded catalog or provider-specific discovery. Grant delivery remains the host application’s protected assignment channel. The demo uses disposable fixtures; production login, live provider acceptance and independent review remain separate gates.
+
+## Acceptance tooling — implemented; external gates remain open
+
+`npm run deployment:check` probes an assigned read and public ingress rejection on an actual HTTPS deployment. `npm run release:status` checks exact-revision acceptance records and artifact hashes; it cannot establish reviewer independence or authorize publishing. See [acceptance](acceptance.md) for current live-provider observations and the proposed first preview. Live Slack, Google provider-consent revocation/reconnection, actual-host acceptance, independent review, current publisher configuration and publication remain open.

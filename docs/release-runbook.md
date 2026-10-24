@@ -45,3 +45,5 @@ Follow the current [npm trusted publisher documentation](https://docs.npmjs.com/
 ## Verify the published result
 
 Check the exact registry name/version and integrity, provenance tied to the expected repository/workflow/commit, intended dist-tag, and a fresh consumer installation from the registry. Repeat runtime/type imports and CLI startup against the registry artifact, not a workspace path. Confirm ordinary consumers need no dev dependencies or registry token. Record links and results before closing the release gate. If verification fails, stop promotion and investigate; do not silently overwrite a published version or claim it passed because the local tarball worked.
+
+The [acceptance workflow](acceptance.md) adds a real HTTPS ingress/read probe, revision-bound evidence records and an explicit first-preview proposal. These tools do not supply missing independent review or production/provider evidence and do not publish the package.
