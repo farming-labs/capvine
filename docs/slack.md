@@ -2,7 +2,7 @@
 
 The `./slack` entry adds `createSlackProvider` and `createSlackAdapter`. It reuses the encrypted account manager, exact resource grants, saved approvals, worker provisioning, and MCP bridge. No provider token is passed to a worker.
 
-This integration has an HTTP provider fixture and a separate-process example. Live Slack consent, app settings, workspace restrictions, rate limits, and revocation have not been validated with a real workspace. The package remains private pending release review.
+This integration has an HTTP provider fixture and a separate-process example. Live Slack consent, app settings, workspace restrictions, rate limits, and revocation have not been validated with a real workspace. The `0.0.1` release is experimental; live Slack acceptance remains open.
 
 ## Run the example
 

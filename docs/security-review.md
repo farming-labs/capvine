@@ -1,6 +1,6 @@
 # External review packet
 
-Request an independent review of a fixed source revision and the intended deployment, followed by retesting of resolved findings. This document defines the handoff; it is not a review report or approval. The library remains experimental and the package private.
+Request an independent review of a fixed source revision and the intended deployment, followed by retesting of resolved findings. This document defines the handoff; it is not a review report or approval. The `0.0.1` package is an experimental release; publication does not substitute for this review.
 
 ## Candidate and reproducibility
 

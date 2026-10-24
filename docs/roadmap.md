@@ -87,11 +87,13 @@ Integrate with application workflows and background jobs, then extract reusable 
 
 ## 3. An OSS release with a supported deployment
 
+Version `0.0.1` is the first authorized experimental release. The supported-deployment milestone below remains incomplete; publishing a preview does not constitute production or independent-review acceptance.
+
 The [release preparation](release-readiness.md) defines the supported ucanto format/version, package surface checks, dependency policy, and publication gates. Schema versioning, identity backup/rotation limits, bounded audit inspection, and fail-closed storage behavior are documented and tested. CI installs the packed artifact into a fresh consumer and checks its runtime and type exports and installed CLI.
 
-**Remaining work:** API review with application developers, independent security review, validation on the intended production host, explicit release approval, and npm ownership and trusted-publishing setup. Track these gates in [issue #16](https://github.com/farming-labs/capvine/issues/16); no publishing workflow is enabled.
+**Remaining work:** API review with application developers, independent security review, validation on the intended production host, and trusted-publishing setup. Version `0.0.1` is authorized as an experimental release, separately from the supported-deployment milestone. Track these gates in [issue #16](https://github.com/farming-labs/capvine/issues/16); no publishing workflow is enabled.
 
-**Exit criteria:** independent security review of the profile, verifier integration, and stated deployment boundary; integration/failure tests in that deployment; explicit maintainer approval for publication. The source remains public and MIT licensed while the package is private.
+**Exit criteria:** independent security review of the profile, verifier integration, and stated deployment boundary; integration/failure tests in that deployment; explicit maintainer approval for publication. The experimental `0.0.1` release does not close this supported-deployment milestone.
 
 ## 4. Scale and broader authority — separate designs
 
@@ -114,7 +116,7 @@ Operate the same OSS verifier with hosted storage, tenant provisioning, identity
 - [x] A repeatable [live-provider check](provider-validation.md) for selected Google/Slack reads through a separate MCP worker, restart, raw retargeting denial, parent revocation, and workflow disable. Provider rejection probes distinguish reconnect-required state from temporary failures. Fixture tests validate the runner; actual provider results remain separate evidence.
 - [x] A [recovery drill and deployment runbook](deployment.md) covering cold backups, stale-state rollback, fresh-authority recovery, operator-token rotation, identity/state mismatch, and concurrent ownership. The Linux containment check now includes persistent state and revocation across restarts, with a pinned image digest.
 - [x] An [external security/API review packet](security-review.md) defining the candidate, trust boundaries, review questions, and required reviewer evidence. An actual independent review remains open.
-- [x] A [checked package review bundle](release-runbook.md) with source revision, artifact digests, fresh-consumer tests, and a read-only manual CI workflow. Registry publishing remains disabled pending review and deployment acceptance.
+- [x] A [checked package review bundle](release-runbook.md) with source revision, artifact digests, fresh-consumer tests, and a read-only manual CI workflow. The first experimental release uses manual authenticated publication; automated publishing remains unconfigured.
 
 ## Runtime application API — implemented
 
@@ -136,4 +138,4 @@ An optional [owner console](owner-console.md) now connects accounts, discovers e
 
 ## Acceptance tooling — implemented; external gates remain open
 
-`npm run deployment:check` probes an assigned read and public ingress rejection on an actual HTTPS deployment. `npm run release:status` checks exact-revision acceptance records and artifact hashes; it cannot establish reviewer independence or authorize publishing. See [acceptance](acceptance.md) for current live-provider observations and the proposed first preview. Live Slack, Google provider-consent revocation/reconnection, actual-host acceptance, independent review, current publisher configuration and publication remain open.
+`npm run deployment:check` probes an assigned read and public ingress rejection on an actual HTTPS deployment. `npm run release:status` checks exact-revision acceptance records and artifact hashes; it cannot establish reviewer independence or authorize publishing. See [acceptance](acceptance.md) for current live-provider observations and the experimental first-release scope. Live Slack, Google provider-consent revocation/reconnection, actual-host acceptance, independent review, automated publisher configuration and production acceptance remain open.

@@ -1,6 +1,6 @@
 # Release readiness
 
-The source is public and MIT licensed. The package remains `private: true`, version `0.0.0`, and has no enabled publish workflow. Successful CI demonstrates the listed behavior; it is not independent security review, production approval, or a registry release.
+Version `0.0.1` is an explicitly authorized experimental release of the MIT-licensed package. The initial release uses authenticated manual publication of a checked tarball; no automated publishing workflow is enabled. Independent review and production acceptance remain incomplete. Successful CI and registry publication do not establish those guarantees. See [release notes](releases/0.0.1.md).
 
 ## Compatibility contract
 
@@ -8,7 +8,7 @@ The current proof format is the CAR archive produced by the pinned ucanto depend
 
 Tests pin the decoded wire version, capability fields, and archive identity. A dependency update that changes these must explicitly address compatibility, stored grants, migration, and rejection behavior. Do not silently accept an expanded profile to keep an upgrade passing.
 
-Before the first published preview, review the API with application developers and choose a version in a dedicated release PR. For subsequent 0.x previews, retain exact-version pins in integration examples; breaking API, schema, or wire changes require a new minor line and migration notes, while compatible fixes use patches. A future 1.0 release requires an explicit stable-support commitment. No currently published compatibility guarantee is implied by this proposed release policy.
+The initial experimental version is `0.0.1`. Independent API review with application developers remains required for the supported-deployment milestone. For subsequent 0.x previews, retain exact-version pins in integration examples; breaking API, schema, or wire changes require a new minor line and migration notes, while compatible fixes use patches. A future 1.0 release requires an explicit stable-support commitment. No currently published compatibility guarantee is implied by this proposed release policy.
 
 Public entries cover the core verifier/client, SQLite, HTTP, identity files, authenticated administration, persistent service, saved workflow approvals, adapter composition, filesystem, PostgreSQL, GitHub, account management, the local browser account console, OAuth/OIDC, Gmail, Slack, MCP, worker provisioning, workflow management and console, and configuration. The CLI is `capvine`, including the provisioned stdio `worker` command. The adapter entries are Node server integrations; the package does not promise browser or edge-runtime compatibility. Review declaration dependencies and the built artifact, not just source imports.
 
@@ -38,13 +38,13 @@ Audit inspection returns bounded invocation outcomes and omits resource contents
 
 Dependencies are pinned at the direct package boundary and locked for repository CI. Review updates for protocol, credential, HTTP, and database behavior; rerun the complete tests, examples, containment check, and package check before merging. npm audit output is supplementary evidence, not proof that a dependency is safe. The isolation Docker image pins an official Node 24 OCI index digest. Review digest updates and rerun containment/recovery checks; a production image still requires its own update and vulnerability-response process.
 
-## Publication gates still open
+## Supported-release gates still open
 
 - [ ] Independent security review of the profile, verifier integration, adapters, administration, and a specific deployment boundary, with findings resolved.
 - [ ] API review with adopters and maintainer approval of a release version and support policy.
 - [ ] A production-specific credential, TLS/ingress, privilege, monitoring, and recovery review; private-provider account onboarding where required.
 - [ ] Verified npm scope/package ownership and approved publisher settings.
-- [ ] A reviewed release PR that changes publication settings and introduces a narrowly authorized publishing workflow.
+- [ ] A narrowly authorized automated publishing workflow and verified publisher settings.
 - [ ] A verified registry release and provenance, followed by an installation smoke check.
 
 No internal test result can check off the independent-review or approval gates.
@@ -53,6 +53,6 @@ No internal test result can check off the independent-review or approval gates.
 
 After those gates are approved, configure npm trust for exactly this repository and the reviewed workflow filename, with a protected GitHub environment. Use GitHub-hosted runners and a supported Node/npm version, grant OIDC permission only to the publishing job, and avoid long-lived registry tokens. Prefer staging-only publishing with a maintainer approval step if supported by the chosen release process. Verify the first publish and provenance before declaring the configuration operational; an npm settings form alone is not evidence. Follow the current [npm trusted-publishing documentation](https://docs.npmjs.com/trusted-publishers/) and [provenance requirements](https://docs.npmjs.com/generating-provenance-statements/) when implementing that separate workflow.
 
-This repository deliberately does not add a dormant publish job that can become active merely by changing a tag or boolean. Publication requires a concrete, reviewed release change and explicit authorization.
+This repository deliberately does not add a dormant publish job that can become active merely by changing a tag or boolean. Publication requires a concrete release change and explicit authorization. The initial manually published experimental release does not claim that automated trust or production acceptance is complete.
 
-The [acceptance workflow](acceptance.md) adds a real HTTPS ingress/read probe, revision-bound evidence records and an explicit first-preview proposal. These tools do not supply missing independent review or production/provider evidence and do not publish the package.
+The [acceptance workflow](acceptance.md) adds a real HTTPS ingress/read probe, revision-bound evidence records and the experimental release scope. These tools do not supply missing independent review or production/provider evidence and do not publish the package.

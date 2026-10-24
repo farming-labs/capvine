@@ -1,9 +1,8 @@
 {
   "name": "@farming-labs/capvine",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Delegated, resource-bound authorization for applications and services.",
   "type": "module",
-  "private": true,
   "license": "MIT",
   "engines": {
     "node": ">=24.0.0"
@@ -179,5 +178,10 @@
   },
   "bin": {
     "capvine": "./dist/cli.js"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "latest"
   }
 }
