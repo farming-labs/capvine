@@ -428,6 +428,47 @@ export async function createApplication(options: ApplicationOptions) {
       session: OwnerSession,
     ): Promise<unknown> {
       switch (name) {
+        case "resources/discover": {
+          const input = record(value, ["plugin"], ["connectionId", "after"]);
+          const plugin = plugins.find((p) => p.id === string(input.plugin, 64));
+          if (!plugin?.discover)
+            throw new CapvineAPIError(400, "discovery_unavailable");
+          const connectionId =
+            input.connectionId === undefined
+              ? undefined
+              : string(input.connectionId, 128);
+          if (
+            connectionId &&
+            requireAccounts().inspect(ownerId, connectionId).status !==
+              "connected"
+          )
+            throw new PermissionDenied("Account is not connected");
+          try {
+            const result = await plugin.discover({
+              ownerId,
+              accounts,
+              ...(connectionId ? { connectionId } : {}),
+              ...(input.after === undefined
+                ? {}
+                : { after: string(input.after, 2048) }),
+            });
+            if (!Array.isArray(result.items) || result.items.length > 25)
+              throw new Error("Invalid discovery page");
+            return {
+              items: result.items.map((item) => ({
+                label: string(item.label, 256),
+                target: selection({ type: plugin.type, target: item.target })
+                  .target,
+              })),
+              nextCursor:
+                result.nextCursor === null
+                  ? null
+                  : string(result.nextCursor, 2048),
+            };
+          } catch {
+            throw new CapvineAPIError(400, "discovery_failed");
+          }
+        }
         case "connections/connect": {
           const input = record(value, ["provider"], ["returnTo"]);
           const provider = string(input.provider, 128);
@@ -724,6 +765,7 @@ export async function createApplication(options: ApplicationOptions) {
         disconnect: method("connections/disconnect"),
       },
       resources: {
+        discover: method("resources/discover"),
         register: method("resources/register"),
         list: method("resources/list"),
       },

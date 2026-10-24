@@ -104,7 +104,7 @@ const receipt = await client.resources.register({
 });
 ```
 
-`selectedConnection` and `selectedMessage` are selections in the application's UI, not Capvine functions. This API registers known IDs; it does not install a Gmail message browser or enumerate every service's objects. The backend resolves the account's verified provider identity, and generates and stores the exact resource ID. The request cannot supply its own owner, resource ID, account subject, URL, or credentials.
+`selectedConnection` and `selectedMessage` are selections in the application's UI, not Capvine functions. This API registers known IDs. Use `client.resources.discover` or the optional [owner console](owner-console.md) to select supported resources; arbitrary service objects are not automatically enumerated. The backend resolves the account's verified provider identity, and generates and stores the exact resource ID. The request cannot supply its own owner, resource ID, account subject, URL, or credentials.
 
 Registration alone gives workers no permission. After the owner approves the exact resource, action and worker identity:
 
@@ -210,7 +210,7 @@ const resource = await capvine.api.resources.register({
 });
 ```
 
-Both clients throw `CapvineAPIError` with `status` and `code`. Authentication is 401, forbidden access is 403, invalid selection is 400, and busy/closing responses are 429/503. Failures do not expose provider tokens, provider response bodies, or filesystem errors. Calls are bounded to 16 active requests, 32 KiB owner bodies, 64 KiB invocations and 1 MiB invocation results. Resource registration is bounded to 256 exact items. Connection and resource lists are paginated, 25 per page, using `nextCursor` as `after`. Resource deletion, batch grants, groups, writes, and automatic resource discovery are not implemented.
+Both clients throw `CapvineAPIError` with `status` and `code`. Authentication is 401, forbidden access is 403, invalid selection is 400, and busy/closing responses are 429/503. Failures do not expose provider tokens, provider response bodies, or filesystem errors. Calls are bounded to 16 active requests, 32 KiB owner bodies, 64 KiB invocations and 1 MiB invocation results. Resource registration is bounded to 256 exact items. Connection and resource lists are paginated, 25 per page, using `nextCursor` as `after`. Resource deletion, batch grants, groups and writes are not implemented. Owner-only discovery is available for plugins that define it; see [resource selection](owner-console.md).
 
 Call `await capvine.close()` during shutdown; it rejects new calls, drains pending requests, closes adapters, and releases the store lock. The application owns its HTTP server and must close it separately. Reopen with the same state, origin and owner; accounts, bindings and revocations persist. This is a long-lived Node process with local state, not a multi-replica or ephemeral-serverless adapter. Supply TLS, ingress limits/timeouts, a verified owner-session integration, backups and worker isolation for any real deployment. Independent security review and production validation remain open.
 

@@ -129,3 +129,7 @@ Complete the [external review and publication gates](https://github.com/farming-
 ## Saved workflows in the application API — implemented
 
 The owner client now exposes persistent workflow approval, listing, bounded proof issuance and disable. Opt-in serial renewal reuses that approval, checks owner authentication on every request, and stops on failure. Disabling the workflow blocks old descendants and new issuance across restart. This is not a durable unattended scheduler; application login, assignment delivery and worker isolation remain the host application’s responsibility. See [the workflow integration](application.md#approve-once-and-renew-within-that-permission).
+
+## Owner resource selection — implemented
+
+An optional [owner console](owner-console.md) now connects accounts, discovers exact choices, reviews resource/action/recipient/duration, approves saved workflows, and disables access. Gmail metadata and immediate regular-file discovery are built in; other plugins supply a bounded catalog or provider-specific discovery. Grant delivery remains the host application’s protected assignment channel. The demo uses disposable fixtures; production login, live provider acceptance and independent review remain separate gates.
