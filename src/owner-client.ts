@@ -6,6 +6,7 @@ import {
   type Command,
   type CommandInput,
   type CommandOutput,
+  type IssuedGrant,
 } from "./application-contract.ts";
 
 export { CapvineAPIError } from "./application-contract.ts";
@@ -14,6 +15,7 @@ export type {
   RegisteredResource,
   RegisterResourceInput,
   IssuedGrant,
+  SavedWorkflow,
 } from "./application-contract.ts";
 
 export function createCapvineClient(options: {
@@ -85,6 +87,49 @@ export function createCapvineClient(options: {
         call("grants/issue", input),
       revoke: (input: CommandInput<"grants/revoke">) =>
         call("grants/revoke", input),
+    },
+    workflows: {
+      approve: (input: CommandInput<"workflows/approve">) =>
+        call("workflows/approve", input),
+      list: (input: CommandInput<"workflows/list"> = {}) =>
+        call("workflows/list", input),
+      issue: (input: CommandInput<"workflows/issue">) =>
+        call("workflows/issue", input),
+      disable: (input: CommandInput<"workflows/disable">) =>
+        call("workflows/disable", input),
+      async maintain(options: {
+        id: string;
+        signal: AbortSignal;
+        onGrant(grant: IssuedGrant): void | Promise<void>;
+      }): Promise<void> {
+        while (!options.signal.aborted) {
+          const grant = await call("workflows/issue", { id: options.id });
+          if (options.signal.aborted) return;
+          const remaining = grant.expiresAt * 1000 - Date.now();
+          if (
+            !Number.isFinite(remaining) ||
+            remaining <= 0 ||
+            remaining > 3600000
+          )
+            throw new Error("Invalid renewed grant lifetime");
+          await options.onGrant(grant);
+          if (options.signal.aborted) return;
+          const delay = Math.max(
+            1000,
+            Math.min(remaining / 2, grant.expiresAt * 1000 - Date.now() - 1000),
+          );
+          await new Promise<void>((resolve) => {
+            const finish = () => {
+              clearTimeout(timer);
+              options.signal.removeEventListener("abort", finish);
+              resolve();
+            };
+            const timer = setTimeout(finish, delay);
+            options.signal.addEventListener("abort", finish, { once: true });
+            if (options.signal.aborted) finish();
+          });
+        }
+      },
     },
   };
 }

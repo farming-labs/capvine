@@ -6,7 +6,8 @@ import { createConfiguredCapvine } from "./setup-internal.ts";
 import { loadIdentity } from "./identity-file.ts";
 import { SqliteStore } from "./sqlite.ts";
 import { createAuthority } from "./server.ts";
-import { encodeGrant } from "./profile.ts";
+import { createWorkflowApprovals, type WorkflowApproval } from "./approvals.ts";
+import { encodeGrant, readClaim } from "./profile.ts";
 import { definePlugin, type CapvinePlugin } from "./plugins.ts";
 import type { AccountProvider } from "./accounts.ts";
 import type { ProviderDefinition } from "./providers.ts";
@@ -16,6 +17,7 @@ import {
   type Json,
   type Resource,
   type ResourceId,
+  type Grant,
 } from "./types.ts";
 import {
   contentType,
@@ -297,6 +299,64 @@ export async function createApplication(options: ApplicationOptions) {
         task.ownerId === ownerId &&
         registered.has(resource.id),
     });
+    const approvals = createWorkflowApprovals({
+      authority,
+      store: state,
+      owner: ownerId,
+    });
+    function workflow(value: WorkflowApproval & { active: boolean }) {
+      return {
+        id: value.id,
+        resource: value.resource,
+        action: value.action,
+        audience: value.audience,
+        expiresAt: value.expiresAt,
+        maxGrantSeconds: value.maxGrantSeconds,
+        active: value.active,
+      };
+    }
+    function ownedWorkflow(id: string) {
+      const saved = approvals.read(id);
+      if (!id.startsWith("app.") || !registered.has(saved.resource))
+        throw new PermissionDenied("Unknown application workflow");
+      return saved;
+    }
+    async function envelope(grant: Grant) {
+      const claim = readClaim(grant);
+      return {
+        id: grant.cid.toString(),
+        grant: Buffer.from(await encodeGrant(grant)).toString("base64"),
+        resource: claim.resource,
+        action: claim.action,
+        audience: grant.audience.did(),
+        expiresAt: grant.expiration,
+        service: signer.did(),
+        invocationURL,
+      };
+    }
+    function lifetime(value: unknown, maximum: number): number {
+      if (
+        !Number.isSafeInteger(value) ||
+        (value as number) < 1 ||
+        (value as number) > maximum
+      )
+        throw new CapvineAPIError(400, "invalid_lifetime");
+      return value as number;
+    }
+    function recipient(value: unknown) {
+      try {
+        return ed25519.Verifier.parse(string(value) as `did:key:${string}`);
+      } catch {
+        throw new CapvineAPIError(400, "invalid_audience");
+      }
+    }
+    async function usableResource(resource: unknown, action: string) {
+      const item = registered.get(string(resource));
+      if (!item || !pluginFor(item).actions.includes(action))
+        throw new PermissionDenied("Unknown resource or action");
+      await adapterFor(item);
+      return item;
+    }
     for (const [action, type] of operations)
       authority.registerOperation({
         action,
@@ -468,26 +528,10 @@ export async function createApplication(options: ApplicationOptions) {
             ["resource", "action", "audience"],
             ["expiresIn"],
           );
-          const item = registered.get(string(input.resource));
           const action = string(input.action, 128);
-          const expiresIn = input.expiresIn ?? 300;
-          if (
-            !Number.isSafeInteger(expiresIn) ||
-            (expiresIn as number) < 1 ||
-            (expiresIn as number) > 3600
-          )
-            throw new CapvineAPIError(400, "invalid_lifetime");
-          let audience;
-          try {
-            audience = ed25519.Verifier.parse(
-              string(input.audience) as `did:key:${string}`,
-            );
-          } catch {
-            throw new CapvineAPIError(400, "invalid_audience");
-          }
-          if (!item || !pluginFor(item).actions.includes(action))
-            throw new PermissionDenied("Unknown resource or action");
-          await adapterFor(item);
+          const expiresIn = lifetime(input.expiresIn ?? 300, 3600);
+          const audience = recipient(input.audience);
+          const item = await usableResource(input.resource, action);
           const taskId = `grant:${randomUUID()}`;
           state.addTask({ id: taskId, ownerId, active: true });
           try {
@@ -499,16 +543,7 @@ export async function createApplication(options: ApplicationOptions) {
               taskId,
               expiresAt: new Date(Date.now() + (expiresIn as number) * 1000),
             });
-            return {
-              id: grant.cid.toString(),
-              grant: Buffer.from(await encodeGrant(grant)).toString("base64"),
-              resource: item.resource.id,
-              action,
-              audience: audience.did(),
-              expiresAt: grant.expiration,
-              service: signer.did(),
-              invocationURL,
-            };
+            return await envelope(grant);
           } catch (error) {
             state.endTask(taskId);
             throw error;
@@ -522,6 +557,56 @@ export async function createApplication(options: ApplicationOptions) {
             throw new PermissionDenied("Unknown grant");
           state.revoke(id);
           return { revoked: true };
+        }
+        case "workflows/approve": {
+          const input = record(
+            value,
+            ["resource", "action", "audience", "expiresIn"],
+            ["maxGrantSeconds"],
+          );
+          const action = string(input.action, 128);
+          const audience = recipient(input.audience);
+          const expiresIn = lifetime(input.expiresIn, 30 * 24 * 3600);
+          const maxGrantSeconds = lifetime(input.maxGrantSeconds ?? 300, 3600);
+          const item = await usableResource(input.resource, action);
+          const saved = approvals.approve({
+            id: `app.${randomUUID()}`,
+            resource: item.resource.id,
+            action,
+            audience,
+            expiresAt: new Date(Date.now() + expiresIn * 1000),
+            maxGrantSeconds,
+          });
+          return workflow(approvals.read(saved.id));
+        }
+        case "workflows/list": {
+          const input = record(value, [], ["after"]);
+          const page = approvals.list({
+            ...(input.after === undefined
+              ? {}
+              : { after: string(input.after, 100) }),
+            limit: 25,
+          });
+          return {
+            workflows: page.approvals
+              .filter(
+                (row) =>
+                  row.id.startsWith("app.") && registered.has(row.resource),
+              )
+              .map(workflow),
+            nextCursor: page.nextCursor,
+          };
+        }
+        case "workflows/issue": {
+          const input = record(value, ["id"]);
+          const saved = ownedWorkflow(string(input.id, 100));
+          await usableResource(saved.resource, saved.action);
+          return envelope(await approvals.issue(saved.id));
+        }
+        case "workflows/disable": {
+          const input = record(value, ["id"]);
+          approvals.disable(ownedWorkflow(string(input.id, 100)).id);
+          return { disabled: true };
         }
         default:
           throw new CapvineAPIError(404, "not_found");
@@ -645,6 +730,12 @@ export async function createApplication(options: ApplicationOptions) {
       grants: {
         issue: method("grants/issue"),
         revoke: method("grants/revoke"),
+      },
+      workflows: {
+        approve: method("workflows/approve"),
+        list: method("workflows/list"),
+        issue: method("workflows/issue"),
+        disable: method("workflows/disable"),
       },
     };
     return {
