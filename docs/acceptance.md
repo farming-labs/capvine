@@ -1,6 +1,6 @@
 # Deployment and release acceptance
 
-The implementation and its fixtures can be complete while live-provider, deployment and independent-review acceptance remain open. Use the existing [review packet](security-review.md) and [bundle procedure](release-runbook.md), then attach evidence for one exact release candidate.
+The implementation and its fixtures can be complete while live-provider, deployment and independent-review acceptance remain open. Use the existing [review packet](security-review.md) and [bundle procedure](release-runbook.md), then attach evidence for one exact release candidate. The [read-only deployment milestone](https://github.com/farming-labs/capvine/milestone/1) and [tracker #16](https://github.com/farming-labs/capvine/issues/16) link each remaining acceptance item; the [roadmap](roadmap.md) states prerequisites and completion criteria.
 
 ## Real-host ingress probe
 
