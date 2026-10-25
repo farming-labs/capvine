@@ -26,21 +26,21 @@ Confirm npm organization membership and package availability using the authentic
 
 ## Dedicated release PR
 
-The release PR contains the approved version and lockfile update, public registry/access configuration, release notes and exact-version installation instructions. The initial release is manual; a future automation PR must include the reviewed publishing workflow. Do not preinstall a dormant publisher that a tag or boolean can accidentally activate.
+The release PR contains the approved version and lockfile update, public registry/access configuration, release notes and exact-version installation instructions. The initial release was manual; future releases use the [staging workflow](trusted-publishing.md) after its registry trust is configured. Dispatch requires an explicitly approved release tag; final npm approval remains a separate maintainer action.
 
 Configure an npm trusted publisher for exactly:
 
-| Field              | Intended value                                                                                                 |
-| ------------------ | -------------------------------------------------------------------------------------------------------------- |
-| Organization       | `farming-labs`                                                                                                 |
-| Repository         | `capvine`                                                                                                      |
-| Workflow filename  | The exact reviewed release workflow filename, including extension                                              |
-| GitHub environment | A dedicated release environment with maintainer protection                                                     |
-| Allowed actions    | Prefer staged publishing requiring maintainer approval, when supported by the chosen bootstrap/release process |
+| Field              | Intended value                                                    |
+| ------------------ | ----------------------------------------------------------------- |
+| Organization       | `farming-labs`                                                    |
+| Repository         | `capvine`                                                         |
+| Workflow filename  | `npm-stage.yml`                                                   |
+| GitHub environment | `npm-staging`, restricted to version tags and maintainer approval |
+| Allowed actions    | Staging only; npm approval remains a separate maintainer action   |
 
 Use a GitHub-hosted runner and a current supported Node/npm combination. Grant `id-token: write` only to the publishing job; keep tests and untrusted PR jobs read-only. Pin actions, verify the released commit/version and reviewed artifact, and avoid long-lived registry tokens. Configure release-branch/tag restrictions and record the concrete reviewer/environment policy. Package settings and one successful release must be verified; scope membership alone is insufficient.
 
-Follow the current [npm trusted publisher documentation](https://docs.npmjs.com/trusted-publishers/) and [staged publishing documentation](https://docs.npmjs.com/staged-publishing/). Newly configured trust currently requires a successful first publish within two days; configure it when the reviewed candidate is ready. Recheck vendor requirements when executing this step.
+Follow the current [npm trusted publisher documentation](https://docs.npmjs.com/trusted-publishers/) and [staged publishing documentation](https://docs.npmjs.com/staged-publishing/). Configure trust when an approved candidate is ready, inspect the returned restrictions, and verify an actual OIDC stage. Recheck vendor requirements when executing this step.
 
 ## Verify the published result
 

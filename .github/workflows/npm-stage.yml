@@ -1,0 +1,60 @@
+name: Stage npm release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-stage
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - run: node scripts/release.ts source
+
+  verify:
+    needs: source
+    permissions:
+      contents: read
+    uses: ./.github/workflows/release-review.yml
+
+  stage:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm-staging
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - run: npm install --global npm@11.19.0 --ignore-scripts --registry=https://registry.npmjs.org/
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ needs.verify.outputs.artifact-id }}
+          path: ${{ runner.temp }}/capvine-release
+          merge-multiple: true
+      - id: bundle
+        run: node scripts/release.ts bundle "$RUNNER_TEMP/capvine-release"
+      - name: Stage the checked archive with provenance
+        env:
+          ARCHIVE: ${{ steps.bundle.outputs.archive }}
+        run: npm stage publish "$ARCHIVE" --ignore-scripts --access public --tag latest --provenance --registry=https://registry.npmjs.org/

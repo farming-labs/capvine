@@ -2,6 +2,11 @@ name: Release review bundle
 
 on:
   workflow_dispatch:
+  workflow_call:
+    outputs:
+      artifact-id:
+        description: Checked package bundle from this workflow run
+        value: ${{ jobs.review.outputs.artifact-id }}
 
 permissions:
   contents: read
@@ -10,8 +15,12 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      artifact-id: ${{ steps.bundle.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
@@ -30,7 +39,8 @@ jobs:
       - run: npm run example:application
       - run: sh examples/isolation/run.sh
       - run: npm run release:bundle -- "$RUNNER_TEMP/capvine-review"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - id: bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: capvine-review-${{ github.sha }}
           path: ${{ runner.temp }}/capvine-review

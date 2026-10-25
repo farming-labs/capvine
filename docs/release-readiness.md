@@ -1,6 +1,6 @@
 # Release readiness
 
-Version `0.0.1` is an explicitly authorized experimental release of the MIT-licensed package. The initial release uses authenticated manual publication of a checked tarball; no automated publishing workflow is enabled. Independent review and production acceptance remain incomplete. Successful CI and registry publication do not establish those guarantees. See [release notes](releases/0.0.1.md).
+Version `0.0.1` is an explicitly authorized experimental release of the MIT-licensed package. The initial release uses authenticated manual publication of a checked tarball; future releases have a manually dispatched [staging workflow](trusted-publishing.md), whose registry trust and first OIDC stage remain unverified. Independent review and production acceptance remain incomplete. Successful CI and registry publication do not establish those guarantees. See [release notes](releases/0.0.1.md).
 
 ## Compatibility contract
 
@@ -44,15 +44,15 @@ Dependencies are pinned at the direct package boundary and locked for repository
 - [ ] API review with adopters and maintainer approval of a release version and support policy.
 - [ ] A production-specific credential, TLS/ingress, privilege, monitoring, and recovery review; private-provider account onboarding where required.
 - [ ] Verified npm scope/package ownership and approved publisher settings.
-- [ ] A narrowly authorized automated publishing workflow and verified publisher settings.
+- [ ] Verified staging-only npm publisher settings and the first successful OIDC stage through the implemented workflow.
 - [ ] A verified registry release and provenance, followed by an installation smoke check.
 
 No internal test result can check off the independent-review or approval gates.
 
 ## Trusted publishing procedure
 
-After those gates are approved, configure npm trust for exactly this repository and the reviewed workflow filename, with a protected GitHub environment. Use GitHub-hosted runners and a supported Node/npm version, grant OIDC permission only to the publishing job, and avoid long-lived registry tokens. Prefer staging-only publishing with a maintainer approval step if supported by the chosen release process. Verify the first publish and provenance before declaring the configuration operational; an npm settings form alone is not evidence. Follow the current [npm trusted-publishing documentation](https://docs.npmjs.com/trusted-publishers/) and [provenance requirements](https://docs.npmjs.com/generating-provenance-statements/) when implementing that separate workflow.
+For an explicitly approved release, follow the [staging configuration and operator guide](trusted-publishing.md). Trust is restricted to this repository, `npm-stage.yml`, the protected `npm-staging` environment and staged publication only. The workflow uses GitHub-hosted runners, grants OIDC permission only to the staging job, and has no long-lived registry token. Verify an actual stage and its provenance before declaring the configuration operational; an npm settings form alone is not evidence. Follow the current [npm trusted-publishing documentation](https://docs.npmjs.com/trusted-publishers/) and [provenance requirements](https://docs.npmjs.com/generating-provenance-statements/) when executing that procedure.
 
-This repository deliberately does not add a dormant publish job that can become active merely by changing a tag or boolean. Publication requires a concrete release change and explicit authorization. The initial manually published experimental release does not claim that automated trust or production acceptance is complete.
+Publication requires a concrete release change and explicit authorization. The staging workflow requires manual dispatch from a matching release tag and contains no direct publish or npm approval command. The initial manually published experimental release does not claim that automated trust or production acceptance is complete.
 
 The [acceptance workflow](acceptance.md) adds a real HTTPS ingress/read probe, revision-bound evidence records and the experimental release scope. These tools do not supply missing independent review or production/provider evidence and do not publish the package.
