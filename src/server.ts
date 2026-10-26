@@ -34,6 +34,7 @@ export function createAuthority(options: {
     invocationId: string | null,
     outcome: AuditEvent["outcome"],
     reason: string,
+    rootGrantId?: string,
   ) {
     options.store.appendAudit({
       id: crypto.randomUUID(),
@@ -41,6 +42,7 @@ export function createAuthority(options: {
       invocationId,
       outcome,
       reason,
+      ...(rootGrantId === undefined ? {} : { rootGrantId }),
     });
   }
 
@@ -108,12 +110,15 @@ export function createAuthority(options: {
         resourceId: resource.id,
         audience: audienceId,
         expiresAt: expiration,
+        action,
+        service,
       });
       return grant;
     },
 
     async execute(bytes: Uint8Array): Promise<Json> {
       let invocationId: string | null = null;
+      let rootGrantId: string | undefined;
       let dispatched = false;
       try {
         const invocation = await decodeGrant(bytes);
@@ -136,6 +141,7 @@ export function createAuthority(options: {
         ) {
           throw new PermissionDenied("Unknown root grant");
         }
+        rootGrantId = root.cid.toString();
         const authorization = await access(asInvocation(invocation), {
           capability: operationCapability,
           authority: options.signer,
@@ -169,7 +175,7 @@ export function createAuthority(options: {
         ) {
           throw new PermissionDenied("Grant has been revoked");
         }
-        audit(invocationId, "allowed", "authorized");
+        audit(invocationId, "allowed", "authorized", rootGrantId);
         dispatched = true;
         return await operation.execute(resource);
       } catch (error) {
@@ -177,6 +183,7 @@ export function createAuthority(options: {
           invocationId,
           dispatched ? "failed" : "denied",
           dispatched ? "handler_failed" : "authorization_failed",
+          rootGrantId,
         );
         throw error;
       }

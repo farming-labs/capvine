@@ -31,6 +31,8 @@ export interface GrantRecord {
   resourceId: ResourceId;
   audience: string;
   expiresAt: number;
+  action?: string;
+  service?: string;
 }
 
 export interface AuditEvent {
@@ -39,6 +41,7 @@ export interface AuditEvent {
   invocationId: string | null;
   outcome: "allowed" | "denied" | "failed";
   reason: string;
+  rootGrantId?: string;
 }
 
 export interface StateStore {

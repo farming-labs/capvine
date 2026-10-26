@@ -1,3 +1,10 @@
+export type {
+  InspectionQuery,
+  InspectedGrant,
+  InspectedOutcome,
+  GrantPage,
+  AuditPage,
+} from "./inspection.ts";
 import {
   applicationURL,
   basePath,
@@ -85,7 +92,14 @@ export function createCapvineClient(options: {
       list: (input: CommandInput<"resources/list"> = {}) =>
         call("resources/list", input),
     },
+    audit: {
+      list: (input: CommandInput<"audit/list"> = {}) =>
+        call("audit/list", input),
+    },
     grants: {
+      list: (input: CommandInput<"grants/list"> = {}) =>
+        call("grants/list", input),
+      get: (input: CommandInput<"grants/get">) => call("grants/get", input),
       issue: (input: CommandInput<"grants/issue">) =>
         call("grants/issue", input),
       revoke: (input: CommandInput<"grants/revoke">) =>

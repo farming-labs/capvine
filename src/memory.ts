@@ -1,7 +1,8 @@
 import type { AuditEvent, GrantRecord, Resource, Task } from "./types.ts";
-import type { ApprovalStore, WorkflowApproval } from "./approvals.ts";
+import type { WorkflowApproval } from "./approvals.ts";
+import type { InspectionStore, AuditPosition } from "./inspection.ts";
 
-export class MemoryStore implements ApprovalStore {
+export class MemoryStore implements InspectionStore {
   #approvals = new Map<string, WorkflowApproval>();
   #resources = new Map<string, Resource>();
   #tasks = new Map<string, Task>();
@@ -72,6 +73,48 @@ export class MemoryStore implements ApprovalStore {
 
   getGrant(id: string): GrantRecord | undefined {
     return structuredClone(this.#grants.get(id));
+  }
+
+  #ownsGrant(ownerId: string, grant: GrantRecord): boolean {
+    return (
+      this.#resources.get(grant.resourceId)?.ownerId === ownerId &&
+      this.#tasks.get(grant.taskId)?.ownerId === ownerId
+    );
+  }
+
+  listGrants(ownerId: string, after: string, limit: number): GrantRecord[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 101)
+      throw new Error("Invalid inspection limit");
+    return structuredClone(
+      [...this.#grants.values()]
+        .filter((row) => row.id > after && this.#ownsGrant(ownerId, row))
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        .slice(0, limit),
+    );
+  }
+
+  listAudit(
+    ownerId: string,
+    after: AuditPosition | undefined,
+    limit: number,
+  ): AuditEvent[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 101)
+      throw new Error("Invalid inspection limit");
+    return structuredClone(
+      this.#events
+        .filter((row) => {
+          const grant = this.#grants.get(row.rootGrantId ?? "");
+          return (
+            grant &&
+            this.#ownsGrant(ownerId, grant) &&
+            (!after ||
+              row.at > after.at ||
+              (row.at === after.at && row.id > after.id))
+          );
+        })
+        .sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        .slice(0, limit),
+    );
   }
 
   revoke(id: string): void {

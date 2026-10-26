@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
     "example": "tsx examples/delegation.ts",
+    "example:inspection": "tsx examples/inspection.ts",
     "example:network": "tsx examples/network/demo.ts",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "format": "prettier --write .",

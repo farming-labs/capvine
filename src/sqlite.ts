@@ -1,8 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
-import type { ApprovalStore, WorkflowApproval } from "./approvals.ts";
+import type { WorkflowApproval } from "./approvals.ts";
 import type { AuditEvent, GrantRecord, Resource, Task } from "./types.ts";
+import type { InspectionStore, AuditPosition } from "./inspection.ts";
 
-export class SqliteStore implements ApprovalStore {
+export class SqliteStore implements InspectionStore {
   #db: DatabaseSync;
 
   constructor(path: string) {
@@ -187,6 +188,54 @@ export class SqliteStore implements ApprovalStore {
   }
   getGrant(id: string): GrantRecord | undefined {
     return this.#get("grant", id);
+  }
+
+  listGrants(ownerId: string, after: string, limit: number): GrantRecord[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 101)
+      throw new Error("Invalid inspection limit");
+    return this.#db
+      .prepare(
+        `
+      SELECT g.value FROM capvine_records g
+      JOIN capvine_records r ON r.kind = 'resource' AND r.id = json_extract(g.value, '$.resourceId')
+      JOIN capvine_records t ON t.kind = 'task' AND t.id = json_extract(g.value, '$.taskId')
+      WHERE g.kind = 'grant' AND g.id > ?
+        AND json_extract(r.value, '$.ownerId') = ? AND json_extract(t.value, '$.ownerId') = ?
+      ORDER BY g.id LIMIT ?
+    `,
+      )
+      .all(after, ownerId, ownerId, limit)
+      .map((row) => JSON.parse(String(row.value)) as GrantRecord);
+  }
+
+  listAudit(
+    ownerId: string,
+    after: AuditPosition | undefined,
+    limit: number,
+  ): AuditEvent[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 101)
+      throw new Error("Invalid inspection limit");
+    return this.#db
+      .prepare(
+        `
+      SELECT a.value FROM capvine_audit a
+      JOIN capvine_records g ON g.kind = 'grant' AND g.id = json_extract(a.value, '$.rootGrantId')
+      JOIN capvine_records r ON r.kind = 'resource' AND r.id = json_extract(g.value, '$.resourceId')
+      JOIN capvine_records t ON t.kind = 'task' AND t.id = json_extract(g.value, '$.taskId')
+      WHERE json_extract(r.value, '$.ownerId') = ? AND json_extract(t.value, '$.ownerId') = ?
+        AND (json_extract(a.value, '$.at') > ? OR (json_extract(a.value, '$.at') = ? AND a.id > ?))
+      ORDER BY json_extract(a.value, '$.at'), a.id LIMIT ?
+    `,
+      )
+      .all(
+        ownerId,
+        ownerId,
+        after?.at ?? -1,
+        after?.at ?? -1,
+        after?.id ?? "",
+        limit,
+      )
+      .map((row) => JSON.parse(String(row.value)) as AuditEvent);
   }
 
   endTask(id: string): void {

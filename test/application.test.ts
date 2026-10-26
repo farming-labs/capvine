@@ -458,8 +458,17 @@ test("dynamic Gmail resources preserve exact bindings through delegation, restar
     other.invoke(await decodeGrant(Buffer.from(independent.grant, "base64"))),
     PermissionDenied,
   );
+  const reads = f.provider.counts.reads;
+  const inspected = await f.client.grants.get({ id: independent.id });
+  assert.equal(inspected.revoked, false);
+  assert.equal(inspected.resource, invoice.id);
+  const inspectedAudit = await f.client.audit.list();
+  assert.equal(f.provider.counts.reads, reads);
   for (const secret of f.provider.secrets())
-    assert.equal(JSON.stringify(issued).includes(secret), false);
+    assert.equal(
+      JSON.stringify({ issued, inspected, inspectedAudit }).includes(secret),
+      false,
+    );
 });
 
 test("registration does not authorize workers and rejects unowned accounts, unknown actions and expanded requests", async (t) => {
@@ -1180,5 +1189,102 @@ test("custom discovery rejects oversized pages and projects only selectable targ
   await assert.rejects(
     f.client.resources.discover({ plugin: "reports" }),
     denied(400),
+  );
+});
+
+test("permission API exposes owned roots and scoped outcomes while preserving delegation and workflow disable", async (t) => {
+  const f = await fixture(t);
+  const selected = await f.client.resources.register({
+    type: "fs.file",
+    target: { path: "one.txt" },
+  });
+  const coordinator = await identity.generate();
+  const worker = await identity.generate();
+  const workflow = await f.client.workflows.approve({
+    resource: selected.id,
+    action: "fs/read",
+    audience: coordinator.did(),
+    expiresIn: 3600,
+    maxGrantSeconds: 300,
+  });
+  const issued = await f.client.workflows.issue({ id: workflow.id });
+  const root = await decodeGrant(Buffer.from(issued.grant, "base64"));
+  const coordinatorClient = createClient({
+    signer: coordinator,
+    service: { did: () => f.app.service.did },
+    transport: f.transport,
+  });
+  const child = await coordinatorClient.delegate({
+    grant: root,
+    audience: worker,
+    expiresAt: new Date(Date.now() + 60_000),
+  });
+  const workerClient = createClient({
+    signer: worker,
+    service: { did: () => f.app.service.did },
+    transport: f.transport,
+  });
+  await workerClient.invoke(child);
+  const before = await f.app.api.grants.get({
+    headers: f.headers,
+    body: { id: issued.id },
+  });
+  assert.equal(before.resource, selected.id);
+  assert.equal(before.audience, coordinator.did());
+  assert.equal(before.action, "fs/read");
+  assert.equal(before.workflow!.id, workflow.id);
+  assert.equal(before.workflow!.disabled, false);
+  assert.deepEqual((await f.client.grants.list()).grants, [before]);
+  await f.client.workflows.disable({ id: workflow.id });
+  await f.restart();
+  await assert.rejects(workerClient.invoke(child), PermissionDenied);
+  const after = await f.client.grants.get({ id: issued.id });
+  assert.equal(after.task.active, false);
+  assert.equal(after.workflow!.disabled, true);
+  assert.equal(after.revoked, false);
+  const audit = await f.app.api.audit.list({ headers: f.headers });
+  assert.deepEqual(
+    audit.events.map((e) => e.outcome),
+    ["allowed", "denied"],
+  );
+  assert.ok(audit.events.every((e) => e.rootGrantId === issued.id));
+  assert.equal(JSON.stringify(audit).includes("Report one"), false);
+  assert.equal(JSON.stringify(audit).includes(issued.grant), false);
+  for (const [route, body] of [
+    ["grants/list", {}],
+    ["grants/get", { id: issued.id }],
+    ["audit/list", {}],
+  ] as const) {
+    for (const [cookie, status] of [
+      ["", 401],
+      ["session=another-owner", 403],
+    ] as const)
+      assert.equal(
+        (await f.raw(route, body, { ...f.headers, cookie })).status,
+        status,
+      );
+    assert.equal(
+      (await f.raw(route, { ...body, ownerId: "other" })).status,
+      400,
+    );
+    assert.equal(
+      (
+        await f.raw(route, body, {
+          ...f.headers,
+          origin: "https://attacker.example",
+        })
+      ).status,
+      403,
+    );
+  }
+  await assert.rejects(
+    f.client.grants.get({ id: child.cid.toString() }),
+    denied(403),
+  );
+  await assert.rejects(f.client.grants.list({ limit: 101 }), denied(403));
+  await assert.rejects(f.client.audit.list({ after: "invalid" }), denied(403));
+  await assert.rejects(
+    f.app.api.grants.list({ headers: { ...f.headers, cookie: "" } }),
+    denied(401),
   );
 });

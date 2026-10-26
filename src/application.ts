@@ -1,3 +1,4 @@
+import { createPermissionInspector } from "./inspection.ts";
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -299,6 +300,10 @@ export async function createApplication(options: ApplicationOptions) {
         task.ownerId === ownerId &&
         registered.has(resource.id),
     });
+    const inspection = createPermissionInspector({
+      store: state,
+      owner: ownerId,
+    });
     const approvals = createWorkflowApprovals({
       authority,
       store: state,
@@ -563,6 +568,30 @@ export async function createApplication(options: ApplicationOptions) {
             nextCursor: items.length > 25 ? items[24]!.resource.id : null,
           };
         }
+        case "grants/list":
+        case "audit/list": {
+          const input = record(value, [], ["after", "limit"]);
+          if (
+            (input.after !== undefined && typeof input.after !== "string") ||
+            (input.limit !== undefined && typeof input.limit !== "number")
+          )
+            throw new CapvineAPIError(400, "invalid_query");
+          const query = {
+            ...(input.after === undefined
+              ? {}
+              : { after: input.after as string }),
+            ...(input.limit === undefined
+              ? {}
+              : { limit: input.limit as number }),
+          };
+          return name === "grants/list"
+            ? inspection.grants.list(query)
+            : inspection.audit.list(query);
+        }
+        case "grants/get": {
+          const input = record(value, ["id"]);
+          return inspection.grants.get(string(input.id));
+        }
         case "grants/issue": {
           const input = record(
             value,
@@ -769,7 +798,10 @@ export async function createApplication(options: ApplicationOptions) {
         register: method("resources/register"),
         list: method("resources/list"),
       },
+      audit: { list: method("audit/list") },
       grants: {
+        list: method("grants/list"),
+        get: method("grants/get"),
         issue: method("grants/issue"),
         revoke: method("grants/revoke"),
       },

@@ -53,6 +53,8 @@ Not implemented: a production service deployment, multi-user account management,
 
 The [resource server command](docs/server-command.md) combines both adapters. Run `npm run example:resources` for the full separate-process demonstration, including revocation and restart. PostgreSQL as a protected resource is separate from storage for Capvine's own permission state. The [roadmap](docs/roadmap.md) and [release readiness checklist](docs/release-readiness.md) retain the remaining external review, production deployment, and publication gates.
 
+Source after `0.0.1` also includes an [owner-only permission inspector](docs/inspection.md), with paginated APIs and a CLI walkthrough. It reports recorded roots and invocation outcomes; it does not enumerate every offline child delegation. This increment is not yet published.
+
 ## Run the example
 
 Requires Node.js 24 or later and npm. The full test suite also requires PostgreSQL 14+ server binaries available through `pg_config` and a non-root test user; it creates its own temporary clusters.
@@ -71,6 +73,7 @@ npm run example:slack
 npm run example:plugins
 npm run example:application
 npm run example:recovery
+npm run example:inspection
 ```
 
 The first example creates a permission for A, delegates it to B, reads one fixture issue, and demonstrates that revoking A's grant stops B's next call. No external account or model API key is needed.

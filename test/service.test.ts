@@ -1,3 +1,6 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 import {
@@ -467,5 +470,172 @@ test("shutdown drains dispatched operations before closing persistent state", as
   await closing;
   const store = new SqliteStore(join(f.directory, "state.db"));
   assert.equal(store.audit().at(-1)?.reason, "handler_failed");
+  assert.deepEqual(
+    store
+      .listAudit("owner", undefined, 25)
+      .map((event) => [event.outcome, event.rootGrantId])
+      .sort((a, b) => a[0]!.localeCompare(b[0]!)),
+    [
+      ["allowed", grant.cid.toString()],
+      ["failed", grant.cid.toString()],
+    ],
+  );
   store.close();
+});
+
+test("owner inspection records delegated outcomes across restart and rejects worker access", async (t) => {
+  const f = await setup(t);
+  await f.admin().createTask("job");
+  const parent = await f.issue();
+  const childSigner = await identity.generate();
+  const child = await f.client().delegate({
+    grant: parent,
+    audience: childSigner,
+    expiresAt: new Date(Date.now() + 60_000),
+  });
+  const childClient = () =>
+    createClient({
+      signer: childSigner,
+      service: f.service().principal,
+      transport: createHttpTransport({ url: f.service().url }),
+    });
+  const id = parent.cid.toString();
+  const before = await f.admin().readGrant(id);
+  assert.deepEqual(before, {
+    id,
+    audience: f.worker.did(),
+    resource: resource.id,
+    action: "record/read",
+    service: f.service().principal.did(),
+    task: { id: "job", active: true },
+    expiresAt: parent.expiration,
+    expired: false,
+    revoked: false,
+    workflow: null,
+  });
+  assert.deepEqual((await f.admin().listGrants()).grants, [before]);
+  assert.equal(await childClient().invoke(child), "fixed");
+  const request = await invoke({
+    issuer: childSigner,
+    audience: f.service().principal,
+    capability: {
+      ...child.capabilities[0]!,
+      with: "urn:capvine:resource:other",
+    },
+    proofs: [child],
+    expiration: child.expiration,
+  }).delegate();
+  await assert.rejects(
+    createHttpTransport({ url: f.service().url })(await encodeGrant(request)),
+    PermissionDenied,
+  );
+  await f.admin().revoke(id);
+  await f.restart();
+  await assert.rejects(childClient().invoke(child), PermissionDenied);
+  assert.equal(f.calls(), 1);
+  assert.equal((await f.admin().readGrant(id)).revoked, true);
+  assert.equal((await f.admin().listGrants()).grants.length, 1);
+  await assert.rejects(f.admin().readGrant(child.cid.toString()), /403/);
+  await assert.rejects(
+    createHttpTransport({ url: f.service().url })(new Uint8Array([1, 2, 3])),
+  );
+  const events = (await f.admin().listAudit()).events;
+  assert.deepEqual(
+    events.map((e) => e.outcome),
+    ["allowed", "denied", "denied"],
+  );
+  assert.ok(events.every((e) => e.rootGrantId === id));
+  for (const secret of [
+    f.token,
+    "fixed",
+    Buffer.from(await encodeGrant(parent)).toString("base64"),
+  ])
+    assert.equal(JSON.stringify({ before, events }).includes(secret), false);
+  const first = await f.admin().listAudit({ limit: 2 });
+  assert.deepEqual(
+    (await f.admin().listAudit({ after: first.nextCursor! })).events,
+    events.slice(2),
+  );
+  await f.restart();
+  assert.deepEqual((await f.admin().listAudit()).events, events);
+  for (const method of ["grant.list", "audit.list", "grant.read"]) {
+    const params = method === "grant.read" ? { id } : { after: "", limit: 25 };
+    for (const token of [
+      "wrong",
+      Buffer.from(await encodeGrant(child)).toString("base64"),
+    ]) {
+      const response = await fetch(f.service().administrationUrl, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ method, params }),
+      });
+      assert.equal(response.status, 401);
+      await response.body?.cancel();
+    }
+    const response = await fetch(new URL("/admin", f.service().url), {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${f.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ method, params }),
+    });
+    assert.equal(response.status, 404);
+    await response.body?.cancel();
+  }
+  await assert.rejects(f.admin().listGrants({ limit: 101 }), /403/);
+  await assert.rejects(f.admin().listAudit({ after: "invalid" }), /403/);
+});
+
+test("inspect CLI reads a private token file and outputs paginated metadata without leaking secrets", async (t) => {
+  const f = await setup(t);
+  await f.admin().createTask("job");
+  const grant = await f.issue();
+  await f.client().invoke(grant);
+  const path = join(f.directory, "inspect.json");
+  const config = {
+    url: f.service().administrationUrl,
+    tokenFile: join(f.directory, "admin.token"),
+    limit: 1,
+  };
+  await writeFile(path, JSON.stringify(config), { mode: 0o600 });
+  const run = (kind: string) =>
+    promisify(execFile)(process.execPath, [
+      "--import",
+      "tsx",
+      fileURLToPath(new URL("../src/cli.ts", import.meta.url)),
+      "inspect",
+      path,
+      kind,
+    ]);
+  assert.deepEqual(
+    JSON.parse((await run("grants")).stdout),
+    await f.admin().listGrants({ limit: 1 }),
+  );
+  const result = await run("audit");
+  assert.deepEqual(
+    JSON.parse(result.stdout),
+    await f.admin().listAudit({ limit: 1 }),
+  );
+  assert.ok(!(result.stdout + result.stderr).includes(f.token));
+  await chmod(path, 0o644);
+  await assert.rejects(run("grants"), (error: unknown) => {
+    assert.ok(error instanceof Error);
+    assert.match(error.message, /Capvine command failed/);
+    assert.ok(!error.message.includes(f.token));
+    return true;
+  });
+  await chmod(path, 0o600);
+  for (const invalid of [
+    { ...config, token: f.token },
+    { ...config, tokenFile: "admin.token" },
+    { ...config, limit: 101 },
+    { ...config, url: "http://example.com/admin" },
+  ]) {
+    await writeFile(path, JSON.stringify(invalid));
+    await assert.rejects(run("grants"));
+  }
 });

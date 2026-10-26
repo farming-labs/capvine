@@ -14,6 +14,7 @@ import { SqliteStore } from "./sqlite.ts";
 import { createHttpHandler } from "./http.ts";
 import { createAdministrationHandler } from "./administration.ts";
 import { createWorkflowApprovals } from "./approvals.ts";
+import { createPermissionInspector } from "./inspection.ts";
 import {
   assertPrivateDirectory,
   initializeIdentity,
@@ -203,6 +204,10 @@ export async function startService(options: {
           owner: options.owner,
           token,
           audit: () => store!.audit(100),
+          inspection: createPermissionInspector({
+            store,
+            owner: options.owner,
+          }),
           approvals: createWorkflowApprovals({
             authority,
             store,

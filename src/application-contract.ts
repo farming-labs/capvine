@@ -1,3 +1,9 @@
+import type {
+  InspectionQuery,
+  GrantPage,
+  InspectedGrant,
+  AuditPage,
+} from "./inspection.ts";
 import type { Json, ResourceId } from "./types.ts";
 
 export interface RegisterResourceInput {
@@ -51,6 +57,9 @@ export interface ResourceChoices {
 }
 
 export interface ApplicationCommands {
+  "grants/list": { input: InspectionQuery; output: GrantPage };
+  "grants/get": { input: { id: string }; output: InspectedGrant };
+  "audit/list": { input: InspectionQuery; output: AuditPage };
   "resources/discover": {
     input: { plugin: string; connectionId?: string; after?: string };
     output: ResourceChoices;
