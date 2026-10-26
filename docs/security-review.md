@@ -17,6 +17,7 @@ npm run example:slack
 npm run example:plugins
 npm run example:application
 npm run example:recovery
+npm run example:inspection
 sh examples/isolation/run.sh
 ```
 
@@ -43,6 +44,8 @@ Attacker-controlled inputs include prompts, provider content, workers, tool argu
 Prioritize exploitable bypasses and durable failure modes over code-style feedback. Use raw signed requests and observable handler/provider counters when reporting authorization findings. Do not send personal account contents or real keys in a reproduction. Follow [SECURITY.md](../SECURITY.md) for disclosure.
 
 Include owner discovery and `src/owner-console.ts` / `src/owner-console-browser.ts`. Confirm discovery authenticates before touching providers, does not grant access, bounds and projects results, and validates targets again during registration. Inspect text rendering of provider labels, fixed browser asset paths, session checks on assets, CSP, exact approval review, and the separation between owner UI and worker assignment. Custom discovery is privileged code.
+
+For candidates after `0.0.1`, include `src/inspection.ts`, `src/inspection-cli.ts`, the store queries and the owner/administration routes. Verify both resource and task ownership, bounded cursors, explicit output projections, unknown legacy metadata and storage failures. A worker proof must not authenticate inspection; a denied event's referenced root must not be presented as an authenticated caller. Confirm that unindexed children and unassociated events are disclosed as coverage limits. Run `test/inspection.test.ts`, the service/application tests and `npm run example:inspection`. Review the full operator authority of the CLI token and keep its files outside worker access.
 
 ## Adopter API review
 
