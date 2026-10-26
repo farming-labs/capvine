@@ -36,17 +36,13 @@ Provider testing, adopter integration and deployment preparation can proceed in 
 
 Record observed results against the same candidate using [acceptance records](acceptance.md). Internal fixtures, a settings form, or a merged helper do not close an external acceptance item. Maintainers must separately accept the evidence and choose support/compatibility commitments. A later release requires its own version and artifact approval.
 
-## Next code increment: permission inspection
+## Permission inspection: implemented in source after 0.0.1
 
-[Issue #52](https://github.com/farming-labs/capvine/issues/52) proposes a bounded, authenticated view of recorded grants and authorization outcomes. It can be developed while external validation is being arranged, using feedback from the adopter review.
+[Issue #52](https://github.com/farming-labs/capvine/issues/52) adds an owner-only API and operator CLI for paginated recorded roots and root-associated invocation outcomes. The [inspection guide](inspection.md) covers use, expiry/revocation/task/workflow flags, legacy metadata and limitations. `npm run example:inspection` reads a real temporary file through a child grant, revokes its parent, restarts the service and inspects the resulting denial.
 
-The first increment should let an owner inspect a recorded root grant's recipient, exact resource/action/task/service, expiry and revocation state, together with task/workflow status and available invocation outcomes. Reuse the existing owner/administration boundary and state stores. Provide bounded pagination and a CLI/API walkthrough before expanding the UI.
+Memory/SQLite, owner API, administration and CLI tests cover pagination, cross-owner rejection, worker-authentication rejection, malformed queries, storage failures and restart. Fresh-package checks exercise the application inspection methods. No new release or external acceptance is implied.
 
-Do not expose private keys, raw proofs, provider credentials or resource contents. A worker proof must not authorize owner inspection. Recorded state does not promise that a provider call will succeed, and revocation does not cancel an operation already dispatched.
-
-Offline child delegations are not exhaustively indexed today. The first inspector must state that limit rather than render an apparently complete delegation tree. A complete explorer needs a separate registration/indexing design. This issue adds visibility without changing issuance or delegation semantics.
-
-**Exit criteria:** authenticated inspection works across restart; unauthorized and cross-owner access, oversized queries and storage failures reject; status distinguishes expiry, recorded revocation and task/workflow disable; the walkthrough demonstrates an allowed read followed by denial after parent revocation.
+Offline children are not exhaustively indexed, and events without a known root association are outside the owner view. A complete delegation explorer needs a separate indexing design. This increment changes visibility without changing issuance or delegation semantics. The next readiness work remains the live-provider, intended-host, reviewer, adopter and publication evidence in Milestone 1.
 
 ## Later designs
 

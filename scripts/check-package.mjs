@@ -191,6 +191,11 @@ try {
       assert.equal(await worker.invoke(grant), "Consumer report");
       await owner.grants.revoke({ id: issued.id });
       await assert.rejects(worker.invoke(grant), PermissionDenied);
+      const inspected = await owner.grants.get({ id: issued.id });
+      assert.equal(inspected.revoked, true);
+      assert.equal(inspected.action, "fs/read");
+      assert.deepEqual((await owner.grants.list()).grants, [inspected]);
+      assert.deepEqual((await owner.audit.list()).events.map(event => event.outcome), ["allowed", "allowed", "denied"]);
       const saved = await owner.workflows.approve({ resource: resource.id, action: "fs/read", audience: signer.did(), expiresIn: 600 });
       const renewed = await owner.workflows.issue({ id: saved.id });
       const proof = await decodeGrant(Buffer.from(renewed.grant, "base64"));

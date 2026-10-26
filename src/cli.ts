@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { inspectService } from "./inspection-cli.ts";
 import { initializeService } from "./service.ts";
 import { loadConfiguration, startConfiguredService } from "./configuration.ts";
 import { loadWorker } from "./worker.ts";
@@ -38,15 +39,22 @@ try {
     };
     process.once("SIGINT", close);
     process.once("SIGTERM", close);
+  } else if (
+    command === "inspect" &&
+    path &&
+    (owner === "grants" || owner === "audit") &&
+    !extra.length
+  ) {
+    console.log(JSON.stringify(await inspectService(path, owner)));
   } else {
     console.error(
-      "Usage: capvine init <new-state-directory> <owner> | capvine serve <private-config.json> | capvine worker <private-assignment.json>",
+      "Usage: capvine init <new-state-directory> <owner> | capvine serve <private-config.json> | capvine worker <private-assignment.json> | capvine inspect <private-config.json> <grants|audit>",
     );
     process.exitCode = 1;
   }
 } catch {
   console.error(
-    "Capvine startup failed. Check protected configuration, credentials, resource permissions, and state.",
+    "Capvine command failed. Check protected configuration, credentials, resource permissions, and state.",
   );
   process.exitCode = 1;
 }

@@ -147,6 +147,10 @@ await client.connections.disconnect({ connectionId: selectedConnection.id });
 
 Revocation blocks subsequent verified calls; it cannot undo a completed read or recall already returned data. Disconnect removes local provider credentials and blocks account-backed resources; it does not claim to revoke consent at Google or Slack. Reconnect creates a fresh connection ID and requires fresh resource selection and grants. For repeat work, use the saved workflows below; the existing [lower-level workflow APIs](workflow-approvals.md) remain compatible.
 
+## Inspect permissions and outcomes
+
+Source after `0.0.1` adds `client.grants.list()`, `client.grants.get({ id })` and `client.audit.list()` under the same authenticated owner boundary. See [permission inspection](inspection.md) for pagination, lifecycle flags, CLI usage and coverage limits. These additions are not included in the published `0.0.1` package.
+
 ## Approve once and renew within that permission
 
 A saved workflow fixes one resource, action and recipient. The owner explicitly approves its total lifetime (up to 30 days) and the lifetime of each proof (up to one hour):

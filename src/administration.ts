@@ -19,6 +19,13 @@ import {
 } from "./http-internal.ts";
 import type { createAuthority } from "./server.ts";
 import type {
+  createPermissionInspector,
+  InspectionQuery,
+  GrantPage,
+  AuditPage,
+  InspectedGrant,
+} from "./inspection.ts";
+import type {
   createWorkflowApprovals,
   WorkflowApprovalInput,
 } from "./approvals.ts";
@@ -81,6 +88,7 @@ export function createAdministrationHandler(options: {
   token: string;
   audit: () => AuditEvent[];
   approvals?: ReturnType<typeof createWorkflowApprovals>;
+  inspection?: ReturnType<typeof createPermissionInspector>;
 }): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   validateAdminToken(options.token);
   const expected = createHash("sha256")
@@ -128,6 +136,27 @@ export function createAdministrationHandler(options: {
       const command = fields(input, ["method", "params"]);
       let result: Json;
       switch (command.method) {
+        case "grant.list":
+        case "audit.list": {
+          if (!options.inspection)
+            throw new RequestError(400, "Inspection is unavailable");
+          const p = fields(command.params, ["after", "limit"]);
+          if (typeof p.after !== "string" || typeof p.limit !== "number")
+            throw new RequestError(400, "Invalid inspection query");
+          const input = { after: p.after, limit: p.limit };
+          result =
+            command.method === "grant.list"
+              ? options.inspection.grants.list(input)
+              : options.inspection.audit.list(input);
+          break;
+        }
+        case "grant.read": {
+          if (!options.inspection)
+            throw new RequestError(400, "Inspection is unavailable");
+          const p = fields(command.params, ["id"]);
+          result = options.inspection.grants.get(string(p.id));
+          break;
+        }
         case "task.create": {
           const p = fields(command.params, ["id"]);
           const id = string(p.id);
@@ -340,5 +369,17 @@ export function createAdministrationClient(options: {
     revoke: (id: string) => call("grant.revoke", { id }),
     endTask: (id: string) => call("task.end", { id }),
     audit: () => call("audit.read", {}),
+    listGrants: async (input: InspectionQuery = {}) =>
+      (await call("grant.list", {
+        after: input.after ?? "",
+        limit: input.limit ?? 25,
+      })) as unknown as GrantPage,
+    readGrant: async (id: string) =>
+      (await call("grant.read", { id })) as unknown as InspectedGrant,
+    listAudit: async (input: InspectionQuery = {}) =>
+      (await call("audit.list", {
+        after: input.after ?? "",
+        limit: input.limit ?? 25,
+      })) as unknown as AuditPage,
   };
 }

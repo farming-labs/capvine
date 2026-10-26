@@ -4,6 +4,16 @@ export { createAuthority } from "./server.ts";
 export { MemoryStore } from "./memory.ts";
 export { encodeGrant, decodeGrant } from "./profile.ts";
 export { PermissionDenied } from "./types.ts";
+export { createPermissionInspector } from "./inspection.ts";
+export type {
+  InspectionQuery,
+  InspectionStore,
+  AuditPosition,
+  InspectedGrant,
+  InspectedOutcome,
+  GrantPage,
+  AuditPage,
+} from "./inspection.ts";
 export type {
   ResourceId,
   Identity,
