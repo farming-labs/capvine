@@ -75,4 +75,36 @@ This probes credential verification without reading a message. It requires crede
 
 Reconnect through the authenticated application. Record the new connection ID, explicitly select the resource again, and rerun the read check with a new private configuration. Verify the old connection still fails with its original configuration. Existing production grants must not be retargeted to the new connection. To close the full live lifecycle gate, also retain an actual old worker in the host application and show its signed call stays denied after reconnect; this temporary read command removes its own workers when it exits.
 
+## Retain a worker across reconnection
+
+Source after `0.0.1` includes `provider:lifecycle` for the old-worker/new-worker part of the check. It works against a running application or service using existing private assignments from `provisionWorker` or the workflow manager. It does not connect accounts, revoke provider consent, mint permissions or replace the provider-rejection check above.
+
+Before revocation, provision a dedicated read-only test worker for the selected message. Use a lifetime sufficient for the test within the owner's approved limit. Its assignment directory and the parent of the new capture directory must be owned by the operator with mode `0700`; assignment files must be `0600`. Then run:
+
+```sh
+npm run provider:lifecycle -- capture /private/workers/original.json /private/review/retained-worker
+```
+
+Capture makes a private copy at `retained-worker/worker.json`, invokes that exact copy, discards the returned content, and records a digest only after a successful read. It refuses an existing capture directory and removes a new incomplete capture if the check fails. This copy contains the worker's signing key and proof: keep it outside source control and worker/model access. Leave the snapshot unchanged even if the application's original assignment renews later.
+
+Next perform and record the provider-side revocation, persistent `reconnect_required` observation and fresh consent described above. Select a new resource bound to the new connection and explicitly approve/provision a new worker. Keep the old resource binding, task and grant in place; do not locally revoke them or disable their workflow merely to make the test pass. Otherwise the result would not isolate reconnection behavior.
+
+```sh
+npm run provider:lifecycle -- compare /private/review/retained-worker /private/workers/fresh.json
+```
+
+Comparison requires the retained assignment's digest to match, both proofs to remain unexpired, the same exact endpoint/service/action, and different worker and resource identities. It invokes the fresh worker and requires success, then invokes the retained worker and requires HTTP 403 through the existing transport. It rechecks expiry and file integrity afterward. HTTP 500/503, timeout, connection failure, changed files, an expired proof, a changed service or an old worker that still succeeds all fail the check. Confirm persistent reconnect-required state before comparing; a first provider rejection may surface as a generic handler error, which this comparison deliberately does not count as a denial.
+
+Restart the actual application/service without changing its endpoint or identity and repeat `compare` with the same files. Keep both redacted outputs alongside the provider observations and source revision in the acceptance record. If a proof expires (or has 15 seconds or less remaining), start a new capture and repeat the lifecycle; expiration is not evidence of provider revocation. Delete the private capture and disposable assignments after recording results.
+
+This tool proves only the observed reads and denial. A 403 alone cannot establish its cause: local revocation, task disable, a removed plugin or ingress policy could also deny access. The receipt is operator-controlled local evidence, not a signature, tamper-evident log or independent attestation. The tool does not establish provider identity, fresh consent, refresh behavior or OS isolation. Those observations and a reviewer/operator's assessment remain separate requirements. HTTPS is required except for explicitly local development using loopback HTTP; both assignments must use the same endpoint.
+
+The automated Google and Slack tests run the full application over HTTP with simulated providers and separate CLI processes, including fresh connections and retained-worker denial after restart:
+
+```sh
+node --import tsx --test test/provider-lifecycle.test.ts
+```
+
+These are fixture tests. They do not access a real Google account or Slack workspace and do not close either live-provider gate.
+
 Record the source revision, date, provider, dedicated test setup, pass/fail checks, whether refresh actually occurred, and provider-specific restrictions. Keep private identifiers out of public evidence. Fixture tests for this runner live in `test/provider-validation.test.ts`; they do not establish live-provider behavior.

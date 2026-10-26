@@ -31,6 +31,7 @@
     "playground": "tsx examples/delegation-playground/main.ts",
     "example:recovery": "tsx examples/recovery.ts",
     "provider:check": "tsx examples/provider-validation/main.ts",
+    "provider:lifecycle": "tsx examples/provider-validation/lifecycle-main.ts",
     "release:bundle": "npm run build && node scripts/check-package.mjs --output",
     "example:application": "tsx examples/application/demo.ts",
     "console:application": "npm run build && tsx examples/application/console.ts",
