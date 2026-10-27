@@ -4,7 +4,13 @@ import { probeResource } from "./probe.mjs";
 
 if (!process.send) throw new Error("Start this worker through the application");
 const path = process.argv[2];
-const worker = await loadWorker(path);
+let worker;
+try {
+  worker = await loadWorker(path);
+} catch {
+  console.error("Worker assignment unavailable");
+  process.exit(1);
+}
 process.send({
   ready: true,
   worker: worker.assignment.worker,

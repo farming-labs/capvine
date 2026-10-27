@@ -21,13 +21,33 @@ async function command(name, body = {}) {
 
 function renderJob() {
   const job = current?.job;
-  $("read").disabled = !job;
-  $("probe").disabled = !job;
-  $("revoke").disabled = !job || job.revoked;
+  const renewable =
+    !!job?.workflowId &&
+    !job.disabled &&
+    job.workflowExpiresAt * 1000 > Date.now();
+  $("read").disabled = !current?.worker;
+  $("probe").disabled = !current?.worker;
+  $("revoke").disabled = !job || job.revoked || job.disabled;
+  $("renew").disabled = !renewable || !current?.worker;
+  $("disable").disabled = !job || job.disabled;
   $("approve").disabled =
-    !!job && !job.revoked && job.expiresAt * 1000 > Date.now();
+    renewable ||
+    (!!job &&
+      !job.workflowId &&
+      !job.disabled &&
+      !job.revoked &&
+      job.expiresAt * 1000 > Date.now());
+  const state = !job
+    ? ""
+    : job.disabled
+      ? "Ended — approval disabled and worker stopped."
+      : !current.worker
+        ? "Worker unavailable — end this workflow before approving another."
+        : job.revoked
+          ? "Current grant revoked — read to test denial. A saved approval can still authorize renewal."
+          : "Issued — the server checks validity on every read.";
   $("permission").textContent = job
-    ? `Resource: ${job.resource}\nWorker: ${current.worker}\nWorker process: ${current.workerPid}\nExpires: ${new Date(job.expiresAt * 1000).toLocaleString()}\n${job.revoked ? "Revoked — the worker still holds its old proof, so you can test denial." : "Issued — the server checks validity on every read."}`
+    ? `Resource: ${job.resource}\nWorker: ${current.worker ?? "Not running"}\nWorker process: ${current.workerPid ?? "None"}\nGrant expires: ${new Date(job.expiresAt * 1000).toLocaleString()}\n${job.workflowId ? `Approval ends: ${new Date(job.workflowExpiresAt * 1000).toLocaleString()}` : "Legacy one-time grant — renewal requires a new explicit approval."}\n${state}`
     : "No worker has permission yet. Selecting a file does not grant access.";
 }
 
@@ -134,7 +154,25 @@ $("revoke").addEventListener(
     void run(async () => {
       current = await command("revoke");
       $("result").textContent =
-        "Permission revoked. Click Read approved file to confirm the worker is denied.";
+        "Current grant revoked. Read to confirm denial. The saved approval remains active, so Renew can issue a new grant. End workflow stops both.";
+    }),
+);
+$("renew").addEventListener(
+  "click",
+  () =>
+    void run(async () => {
+      current = await command("renew");
+      $("result").textContent =
+        "Permission renewed under your saved approval. The worker keeps the same identity and process. The previous grant is revoked.";
+    }),
+);
+$("disable").addEventListener(
+  "click",
+  () =>
+    void run(async () => {
+      current = await command("disable");
+      $("result").textContent =
+        "Workflow ended. Existing proofs and future renewal are denied by Capvine. The worker process has stopped.";
     }),
 );
 void run(refresh);
