@@ -45,7 +45,7 @@ A compatible runtime can launch this process using its MCP configuration:
 }
 ```
 
-The server advertises the configured tool, accepts no tool arguments, and writes only MCP messages to stdout. The package is still private; use the checked-out source command `node --import tsx src/cli.ts worker /absolute/path/report.json` until publication is approved.
+The server advertises the configured tool, accepts no tool arguments, and writes only MCP messages to stdout. Install the experimental published package with `npm install --save-exact @farming-labs/capvine@0.0.1`; use the installed `capvine` binary from your application. From a source checkout, the equivalent command is `node --import tsx src/cli.ts worker /absolute/path/report.json`.
 
 Ordinary application workers use the same assignment directly:
 

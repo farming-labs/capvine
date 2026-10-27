@@ -84,6 +84,8 @@ The [network example](examples/network/README.md) runs an authority, coordinator
 
 ## The developer integration
 
+For a copyable application with real password login and a separate file-reading worker, use the [application starter](examples/application/starter/README.md). It installs the published package with its own lockfile, persists state across restarts, and demonstrates selected-file access, raw cross-resource denial and parent revocation. It runs locally without external account credentials; it does not establish production isolation or independent adopter acceptance.
+
 Start with the [application API guide](docs/application.md): configure providers and plugins once, mount `capvine.handler`, then use `createCapvineClient()` to connect accounts, register selected resources, issue grants, and revoke access. `npm run example:application` exercises OAuth, exact-resource registration, separate-process delegation, restart, and revocation over HTTP with a local provider fixture. The application supplies verified owner sessions. This remains a single-owner read-only prototype; independent security review and production validation remain open.
 
 The optional [owner permission workspace](docs/owner-console.md) adds resource selection and explicit saved-workflow approval using the same authenticated API. Gmail and filesystem discovery are built in; custom plugins can supply choices. Try `npm run console:application` with its clearly labeled disposable fixtures.

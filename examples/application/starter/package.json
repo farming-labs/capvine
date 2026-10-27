@@ -1,0 +1,22 @@
+{
+  "name": "capvine-application-starter",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "setup": "node setup.mjs",
+    "start": "npm run build && node server.mjs",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@farming-labs/capvine": "0.0.1",
+    "@ucanto/client": "9.0.2",
+    "better-auth": "1.7.14"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
