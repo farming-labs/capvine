@@ -2,6 +2,8 @@
 
 The `./worker` entry connects saved approvals to ordinary jobs and MCP runtimes. A trusted application provisions a private assignment file. A separate worker reads it and invokes only its assigned resource through the existing HTTP verifier. There is no runtime-specific harness or provider credential in the assignment.
 
+For a complete application using the published package, run the [application starter](../examples/application/starter/README.md). Its owner login, saved approval, private assignment, separate worker, manual renewal, parent revocation and workflow shutdown are connected in one runnable flow. Renewal preserves the worker key and process; restarting does not renew or re-enable access. The starter's backend owns the coordinator key and verifies the owner session on every control request.
+
 ## Approve once, provision each worker
 
 The owner-facing application first authenticates the owner and approves an exact workflow using [saved approvals](workflow-approvals.md). The following code runs in the trusted backend, which owns the administration client and coordinator key. It is not a browser or worker API.

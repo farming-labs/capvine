@@ -12,7 +12,7 @@ import {
   loadIdentity,
   readPrivateFile,
 } from "@farming-labs/capvine/identity-file";
-import { provisionWorker } from "@farming-labs/capvine/worker";
+import { provisionWorker, renewWorker } from "@farming-labs/capvine/worker";
 import { openAuth } from "./auth.mjs";
 import {
   assignmentPath,
@@ -101,7 +101,13 @@ export async function startApplication(directory) {
       ],
     });
     job = await readJob(directory);
-    if (job) worker = await startWorker(assignmentPath(directory, job));
+    if (job && !job.disabled) {
+      try {
+        worker = await startWorker(assignmentPath(directory, job));
+      } catch {
+        // Owner controls must remain available to disable a damaged assignment.
+      }
+    }
 
     const info = () => ({
       job,
@@ -128,24 +134,38 @@ export async function startApplication(directory) {
         const headers = request.headers;
         if (route === "status") return info();
         if (route === "approve") {
-          if (job && !job.revoked && job.expiresAt > Date.now() / 1000)
+          if (
+            job &&
+            !job.disabled &&
+            (job.workflowId
+              ? job.workflowExpiresAt > Date.now() / 1000
+              : !job.revoked && job.expiresAt > Date.now() / 1000)
+          )
             throw new RequestError(
               409,
-              "Revoke the current permission before approving another",
+              "End the current workflow before approving another",
             );
-          const grant = await app.api.grants.issue({
+          const workflow = await app.api.workflows.approve({
             headers,
             body: {
               resource: body.resource,
               action: "fs/read",
               audience: coordinator.did(),
-              expiresIn: 300,
+              expiresIn: 3600,
+              maxGrantSeconds: 300,
             },
           });
           let nextWorker;
           try {
+            const grant = await app.api.workflows.issue({
+              headers,
+              body: { id: workflow.id },
+            });
             const next = {
               id: randomUUID(),
+              workflowId: workflow.id,
+              workflowExpiresAt: workflow.expiresAt,
+              disabled: false,
               grantId: grant.id,
               resource: grant.resource,
               expiresAt: grant.expiresAt,
@@ -167,20 +187,83 @@ export async function startApplication(directory) {
             worker = nextWorker;
             job = next;
           } catch (error) {
-            await nextWorker?.close();
+            try {
+              await app.api.workflows.disable({
+                headers,
+                body: { id: workflow.id },
+              });
+            } finally {
+              await nextWorker?.close();
+            }
+            throw error;
+          }
+          return info();
+        }
+        if (!job) throw new RequestError(409, "Approve a file first");
+        if (route === "disable") {
+          if (job.workflowId)
+            await app.api.workflows.disable({
+              headers,
+              body: { id: job.workflowId },
+            });
+          else
+            await app.api.grants.revoke({ headers, body: { id: job.grantId } });
+          job = { ...job, disabled: true };
+          await worker?.close();
+          worker = undefined;
+          await saveJob(directory, job);
+          return info();
+        }
+        if (route === "renew") {
+          if (Object.keys(body).length)
+            throw new RequestError(
+              400,
+              "Renewal uses the saved workflow; no options are accepted",
+            );
+          if (!job.workflowId || job.disabled)
+            throw new RequestError(
+              409,
+              "No renewable workflow; explicitly approve a new job",
+            );
+          if (!worker)
+            throw new RequestError(
+              409,
+              "Worker unavailable; end the workflow before starting another",
+            );
+          const grant = await app.api.workflows.issue({
+            headers,
+            body: { id: job.workflowId },
+          });
+          try {
+            await renewWorker({
+              path: assignmentPath(directory, job),
+              coordinator,
+              grant: await decodeGrant(Buffer.from(grant.grant, "base64")),
+              expiresAt: new Date(grant.expiresAt * 1000),
+            });
+            await app.api.grants.revoke({ headers, body: { id: job.grantId } });
+            const next = {
+              ...job,
+              grantId: grant.id,
+              expiresAt: grant.expiresAt,
+              revoked: false,
+            };
+            await saveJob(directory, next);
+            job = next;
+          } catch (error) {
             await app.api.grants.revoke({ headers, body: { id: grant.id } });
             throw error;
           }
           return info();
         }
-        if (!job || !worker)
-          throw new RequestError(409, "Approve a file first");
         if (route === "revoke") {
           await app.api.grants.revoke({ headers, body: { id: job.grantId } });
           job = { ...job, revoked: true };
           await saveJob(directory, job);
           return info();
         }
+        if (!worker)
+          throw new RequestError(409, "Worker stopped or unavailable");
         if (route === "read") return await worker.request("read");
         if (route === "probe") {
           if (

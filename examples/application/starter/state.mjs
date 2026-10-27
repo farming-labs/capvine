@@ -52,7 +52,13 @@ export async function readJob(directory) {
       typeof job.grantId !== "string" ||
       !job.resource?.startsWith("urn:capvine:resource:") ||
       !Number.isSafeInteger(job.expiresAt) ||
-      typeof job.revoked !== "boolean"
+      typeof job.revoked !== "boolean" ||
+      (job.disabled !== undefined && typeof job.disabled !== "boolean") ||
+      (job.workflowId !== undefined &&
+        (typeof job.workflowId !== "string" ||
+          !job.workflowId.startsWith("app.") ||
+          !Number.isSafeInteger(job.workflowExpiresAt) ||
+          typeof job.disabled !== "boolean"))
     )
       throw new Error("Invalid saved job");
     return job;

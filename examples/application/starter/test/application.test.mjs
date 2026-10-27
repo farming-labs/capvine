@@ -5,11 +5,19 @@ import { once } from "node:events";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { request as httpRequest } from "node:http";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createCapvineClient } from "@farming-labs/capvine/client";
-import { readPrivateFile } from "@farming-labs/capvine/identity-file";
+import {
+  loadIdentity,
+  readPrivateFile,
+  writePrivateFile,
+} from "@farming-labs/capvine/identity-file";
+import { decodeGrant, PermissionDenied } from "@farming-labs/capvine";
+import { provisionWorker } from "@farming-labs/capvine/worker";
+import { probeResource } from "../probe.mjs";
+import { assignmentPath, saveJob } from "../state.mjs";
 import { initialize } from "../setup.mjs";
 import { openAuth } from "../auth.mjs";
 
@@ -224,10 +232,188 @@ test(
       originalAssignment,
     );
     assert.deepEqual(await f.command("read"), { status: "denied" });
+    assert.equal(
+      (await f.post("/api/starter/approve", { resource: registered[1].id }))
+        .status,
+      409,
+    );
+    await f.command("disable");
     const newPermission = await f.command("approve", {
       resource: registered[1].id,
     });
     assert.notEqual(newPermission.job.grantId, approved.job.grantId);
+    assert.equal((await f.command("read")).status, "allowed");
+  },
+);
+
+async function registerReports(f) {
+  await f.signIn();
+  const { items } = await f.client.resources.discover({ plugin: "reports" });
+  return Promise.all(
+    items.map((item) =>
+      f.client.resources.register({
+        type: "fs.file",
+        plugin: "reports",
+        target: item.target,
+      }),
+    ),
+  );
+}
+
+test(
+  "saved approval renews the same running worker; ending it blocks retained proofs and future issuance after restart",
+  { timeout: 60_000 },
+  async (t) => {
+    const f = await fixture(t);
+    const [file, other] = await registerReports(f);
+    const original = await f.command("approve", { resource: file.id });
+    assert.equal((await f.client.workflows.list()).workflows.length, 1);
+    assert.ok(original.job.expiresAt <= original.job.workflowExpiresAt);
+    assert.ok(original.job.expiresAt <= Date.now() / 1000 + 300);
+    const path = assignmentPath(f.directory, original.job);
+    const oldPath = join(f.directory, "retained-assignment.json");
+    const oldBytes = await readPrivateFile(path, 65_536);
+    await writePrivateFile(oldPath, oldBytes);
+    await probeResource(oldPath, file.id);
+    assert.equal(
+      (await f.post("/api/starter/renew", { resource: other.id })).status,
+      400,
+    );
+    assert.equal(await readPrivateFile(path, 65_536), oldBytes);
+    const renewed = await f.command("renew");
+    assert.equal(renewed.worker, original.worker);
+    assert.equal(renewed.workerPid, original.workerPid);
+    assert.equal(renewed.job.workflowId, original.job.workflowId);
+    assert.equal(renewed.job.workflowExpiresAt, original.job.workflowExpiresAt);
+    assert.equal(renewed.job.resource, file.id);
+    assert.notEqual(renewed.job.grantId, original.job.grantId);
+    assert.equal((await f.client.workflows.list()).workflows.length, 1);
+    const nextBytes = await readPrivateFile(path, 65_536);
+    assert.equal(JSON.parse(nextBytes).signer, JSON.parse(oldBytes).signer);
+    assert.notEqual(JSON.parse(nextBytes).grant, JSON.parse(oldBytes).grant);
+    assert.equal((await f.command("read")).status, "allowed");
+    await assert.rejects(probeResource(oldPath, file.id), PermissionDenied);
+    assert.deepEqual(await f.command("probe", { resource: other.id }), {
+      status: "denied",
+    });
+    await f.command("revoke");
+    assert.deepEqual(await f.command("read"), { status: "denied" });
+    await f.restart();
+    assert.deepEqual(await f.command("read"), { status: "denied" });
+    const resumed = await f.command("renew");
+    assert.equal(resumed.worker, original.worker);
+    assert.equal((await f.command("read")).status, "allowed");
+    const latestBytes = await readPrivateFile(path, 65_536);
+    const ended = await f.command("disable");
+    assert.equal(ended.job.disabled, true);
+    assert.equal(ended.workerPid, null);
+    assert.throws(() => process.kill(resumed.workerPid, 0), { code: "ESRCH" });
+    assert.ok(resumed.job.expiresAt > Date.now() / 1000);
+    await assert.rejects(probeResource(path, file.id), PermissionDenied);
+    await assert.rejects(
+      f.client.workflows.issue({ id: original.job.workflowId }),
+      { status: 403 },
+    );
+    assert.equal((await f.post("/api/starter/renew")).status, 409);
+    assert.equal((await f.post("/api/starter/read")).status, 409);
+    await f.restart();
+    assert.equal((await f.command("status")).workerPid, null);
+    assert.equal(await readPrivateFile(path, 65_536), latestBytes);
+    await assert.rejects(probeResource(path, file.id), PermissionDenied);
+    await assert.rejects(
+      f.client.workflows.issue({ id: original.job.workflowId }),
+      { status: 403 },
+    );
+    assert.equal((await f.post("/api/starter/renew")).status, 409);
+    const replacement = await f.command("approve", { resource: other.id });
+    assert.notEqual(replacement.worker, original.worker);
+    assert.notEqual(replacement.job.workflowId, original.job.workflowId);
+    assert.equal((await f.command("read")).status, "allowed");
+  },
+);
+
+test(
+  "failed renewal persistence revokes the installed proof; a damaged assignment does not prevent owner shutdown",
+  { timeout: 60_000 },
+  async (t) => {
+    const f = await fixture(t);
+    const [file] = await registerReports(f);
+    const original = await f.command("approve", { resource: file.id });
+    const path = assignmentPath(f.directory, original.job);
+    const oldPath = join(f.directory, "retained-assignment.json");
+    const oldBytes = await readPrivateFile(path, 65_536);
+    await writePrivateFile(oldPath, oldBytes);
+    const metadataPath = join(f.directory, "job.json");
+    const metadata = await readPrivateFile(metadataPath);
+    await unlink(metadataPath);
+    await mkdir(metadataPath, { mode: 0o700 });
+    assert.equal((await f.post("/api/starter/renew")).status, 503);
+    const failedBytes = await readPrivateFile(path, 65_536);
+    assert.notEqual(JSON.parse(failedBytes).grant, JSON.parse(oldBytes).grant);
+    await assert.rejects(probeResource(path, file.id), PermissionDenied);
+    await assert.rejects(probeResource(oldPath, file.id), PermissionDenied);
+    assert.deepEqual(await f.command("read"), { status: "denied" });
+    await rm(metadataPath, { recursive: true });
+    await writePrivateFile(metadataPath, metadata);
+    await f.restart();
+    assert.deepEqual(await f.command("read"), { status: "denied" });
+    const recovered = await f.command("renew");
+    assert.equal(recovered.worker, original.worker);
+    assert.equal((await f.command("read")).status, "allowed");
+    await unlink(path);
+    await f.restart();
+    assert.equal((await f.command("status")).workerPid, null);
+    assert.equal((await f.post("/api/starter/read")).status, 409);
+    assert.equal((await f.post("/api/starter/renew")).status, 409);
+    await f.command("disable");
+    await assert.rejects(
+      f.client.workflows.issue({ id: original.job.workflowId }),
+      { status: 403 },
+    );
+  },
+);
+
+test(
+  "legacy one-time assignments resume without silently acquiring renewable approval",
+  { timeout: 60_000 },
+  async (t) => {
+    const f = await fixture(t);
+    const [file] = await registerReports(f);
+    const coordinator = await loadIdentity(
+      join(f.directory, "coordinator.key"),
+    );
+    const grant = await f.client.grants.issue({
+      resource: file.id,
+      action: "fs/read",
+      audience: coordinator.did(),
+      expiresIn: 300,
+    });
+    const job = {
+      id: crypto.randomUUID(),
+      grantId: grant.id,
+      resource: file.id,
+      expiresAt: grant.expiresAt,
+      revoked: false,
+    };
+    const path = assignmentPath(f.directory, job);
+    await mkdir(join(f.directory, "workers", job.id), { mode: 0o700 });
+    await provisionWorker({
+      path,
+      coordinator,
+      grant: await decodeGrant(Buffer.from(grant.grant, "base64")),
+      url: grant.invocationURL,
+      toolName: "read_report",
+      expiresAt: new Date(grant.expiresAt * 1000),
+    });
+    await saveJob(f.directory, job);
+    await f.restart();
+    assert.equal((await f.command("read")).status, "allowed");
+    assert.equal((await f.post("/api/starter/renew")).status, 409);
+    assert.equal((await f.client.workflows.list()).workflows.length, 0);
+    await f.command("disable");
+    await assert.rejects(probeResource(path, file.id), PermissionDenied);
+    const replacement = await f.command("approve", { resource: file.id });
+    assert.ok(replacement.job.workflowId);
     assert.equal((await f.command("read")).status, "allowed");
   },
 );
@@ -253,6 +439,22 @@ test(
       404,
     );
     await f.signIn();
+    for (const route of ["renew", "disable"]) {
+      assert.equal(
+        (await f.post(`/api/starter/${route}`, {}, { cookie: "" })).status,
+        401,
+      );
+      assert.equal(
+        (
+          await f.post(
+            `/api/starter/${route}`,
+            {},
+            { origin: "https://untrusted.example" },
+          )
+        ).status,
+        403,
+      );
+    }
     assert.equal(
       (
         await f.post(
