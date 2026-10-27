@@ -34,6 +34,8 @@ The manual `0.0.1` registry release and fresh consumer installation are verified
 
 Provider testing, adopter integration and deployment preparation can proceed in parallel. Independent review can be scoped early; its final record must cover the selected candidate and deployment, including remediation. npm setup does not block that work. No new package version is needed merely to test credentials.
 
+The [application starter](../examples/application/starter/README.md) prepares #51 with real Better Auth login, a pinned published-package installation, a separate delegated file worker and restart/revocation tests. It runs on loopback with local sample files. An independent adopter still needs to integrate it, record feedback and validate their intended application; this example does not close #51 or the deployment/security checks.
+
 The [provider lifecycle commands](provider-validation.md#retain-a-worker-across-reconnection), available in source after `0.0.1`, preserve an original worker assignment and compare its denial with a fresh worker's successful read after reconnection. Google and Slack application fixtures exercise the commands and restart behavior in CI. They prepare reproducible live checks for #47/#48; those issues remain open until the real provider and retained-worker evidence is recorded.
 
 Record observed results against the same candidate using [acceptance records](acceptance.md). Internal fixtures, a settings form, or a merged helper do not close an external acceptance item. Maintainers must separately accept the evidence and choose support/compatibility commitments. A later release requires its own version and artifact approval.

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Capvine · Application starter</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header><strong>capvine</strong><span>Application starter</span></header>
+    <main>
+      <h1>One file. One permission.</h1>
+      <p>Approve a real file read, try a different file, then revoke access.</p>
+      <p id="status" role="status" aria-live="polite">Checking your session…</p>
+      <section id="login" hidden>
+        <h2>Sign in</h2>
+        <p>
+          Use the owner account you created with <code>npm run setup</code>.
+        </p>
+        <form id="sign-in">
+          <label for="email">Email</label
+          ><input id="email" type="email" autocomplete="username" required />
+          <label for="password">Password</label
+          ><input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+          <button type="submit">Sign in</button>
+        </form>
+      </section>
+      <div id="workspace" hidden>
+        <button id="sign-out" class="secondary">Sign out</button>
+        <section>
+          <h2>1. Choose and approve</h2>
+          <form id="approval">
+            <label for="file">File in the configured reports folder</label
+            ><select id="file" required></select>
+            <p>
+              The coordinator may delegate this exact read to the report worker.
+              Permission lasts five minutes.
+            </p>
+            <label class="confirmation"
+              ><input id="confirm" type="checkbox" required /> I approve reading
+              the selected file.</label
+            >
+            <button id="approve" type="submit">Approve selected file</button>
+          </form>
+        </section>
+        <section>
+          <h2>2. Use the permission</h2>
+          <pre id="permission"></pre>
+          <div class="actions">
+            <button id="read" disabled>Read approved file</button
+            ><button id="probe" class="secondary" disabled>
+              Try selected file with the same key
+            </button>
+          </div>
+          <p>
+            To test the boundary, select the other file above and choose “Try
+            selected file with the same key.” This sends a signed request to the
+            server.
+          </p>
+          <pre id="result" role="status" aria-live="polite">
+Results appear here.</pre
+          >
+        </section>
+        <section>
+          <h2>3. Revoke and retry</h2>
+          <button id="revoke" class="secondary" disabled>
+            Revoke permission
+          </button>
+          <p>
+            Retry the read after revoking. Restart with <code>npm start</code>,
+            sign in if necessary, and retry again before the original
+            five-minute expiry. Restart never issues a new permission.
+          </p>
+        </section>
+      </div>
+      <footer>
+        Experimental · Single owner · Read-only<br />Workers run as separate
+        processes under the same OS user. This starter demonstrates
+        authorization, not hostile-code isolation. Signing out ends your login
+        session; revoke separately to stop a worker.
+      </footer>
+    </main>
+  </body>
+</html>

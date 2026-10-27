@@ -2,6 +2,8 @@
 
 Configure supported services once. Connect accounts, select exact resources, and grant access while the application runs. This API uses the existing account manager, resource adapters, SQLite state, and UCAN verifier. It does not require Better Auth; an application can use Better Auth or another verified session system for owner authentication.
 
+The [standalone application starter](../examples/application/starter/README.md) supplies a concrete Better Auth integration with real password login, persistent state and a separate delegated worker reading local files. It has its own pinned registry dependencies and can be copied outside the repository. It complements the OAuth fixture below; neither example establishes a production deployment or independent adopter review.
+
 Install `@farming-labs/capvine@0.0.1` for the experimental API. Run `npm run example:application` from the checkout for a complete HTTP example with a local OAuth fixture and separate coordinator/worker processes. It checks selected-message access, raw cross-resource denial, restart without another consent, and persistent parent revocation. It connects no real Google account and does not demonstrate OS isolation.
 
 ## Configure the backend
